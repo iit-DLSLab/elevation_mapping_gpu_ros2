@@ -1,0 +1,15 @@
+###### Requirements without Version Specifiers ######`
+numpy
+scipy
+dataclasses
+ruamel.yaml
+opencv-python
+simple-parsing
+scikit-image
+matplotlib
+catkin-tools
+catkin_pkg
+# cupy
+
+###### Requirements with Version Specifiers ######`
+# shapely==1.7.1

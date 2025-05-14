@@ -1,0 +1,39 @@
+/elevation_mapping_node:
+  ros__parameters:
+    # pointcloud_channel_fusions:
+    #   rgb: 'color'
+    #   default: 'average'
+
+    # image_channel_fusions:
+    #   rgb: 'color'
+    #   default: 'exponential'
+    #   feat_.*: 'exponential'
+
+    # 1) Use KISS-ICP odometry instead of TF for pose
+    odom_topic:       '/kiss/odometry'
+
+    # 2) Match your TF frame names
+    map_frame:        'map'
+    base_frame:       'robot'
+    sensor_frame:     'lidar'
+
+    # 3) Enable all the elevation map outputs
+    enable_pointcloud_publishing: true
+    enable_normal_arrow_publishing: true
+    enable_drift_corrected_TF_publishing: true
+
+    subscribers:
+      velodyne:
+        topic_name: '/velodyne_points'
+        data_type: pointcloud
+        channels: ['default']
+
+    publishers:
+      elevation_map_raw:
+        layers: ['elevation', 'traversability', 'variance','rgb']
+        basic_layers: ['elevation']
+        fps: 5.0
+      elevation_map_filter:
+        layers: ['min_filter', 'smooth', 'inpaint', 'elevation']
+        basic_layers: ['min_filter']
+        fps: 3.0
