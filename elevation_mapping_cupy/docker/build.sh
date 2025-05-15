@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-cd ~/workspace
+cd /home/ros/workspace
 # Set the default build type
 source /opt/ros/$ROS_DISTRO/setup.bash
 BUILD_TYPE=RelWithDebInfo #Debug, Release, RelWithDebInfo, MinSizeRel

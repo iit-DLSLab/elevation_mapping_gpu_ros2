@@ -1,7 +1,7 @@
 numpy_lessthan_2:
   ubuntu:
     pip:
-      packages: ["numpy<2.0.0"]
+      packages: ["numpy"]
 simple-parsing:
   ubuntu:
     pip:

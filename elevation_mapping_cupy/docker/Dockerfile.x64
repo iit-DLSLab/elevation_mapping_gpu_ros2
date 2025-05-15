@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.4
 
 # Base image
-FROM nvidia/cuda:12.1.1-cudnn8-devel-ubuntu22.04 AS base
+FROM nvidia/cuda:12.1.1-cudnn8-devel-ubuntu22.04
 
 # Metadata
 LABEL description="ROS2 environment with CUDA support"
@@ -15,6 +15,11 @@ ARG USER_GID=$USER_UID
 ARG RMW_NAME=zenoh
 ARG INSTALL_EMCUPY_ROSDEPS=true
 
+# BUILD TYPE Debug, Release, RelWithDebInfo, MinSizeRel
+ARG BUILD_TYPE=RelWithDebInfo 
+
+ENV TURTLEBOT3_MODEL=waffle_realsense_depth
+
 # Environment variables
 ENV DEBIAN_FRONTEND=noninteractive \
     LANG=en_US.UTF-8 \
@@ -26,7 +31,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     AMENT_PREFIX_PATH=/opt/ros/${ROS_DISTRO} \
     COLCON_PREFIX_PATH=/opt/ros/${ROS_DISTRO} \
     LD_LIBRARY_PATH=/opt/ros/${ROS_DISTRO}/lib:/usr/local/cuda/lib64 \
-    PATH=/opt/ros/${ROS_DISTRO}/bin:/usr/src/tensorrt/bin:/usr/local/cuda/bin:$PATH \
+    PATH=/opt/ros/${ROS_DISTRO}/bin:/usr/src/tensorrt/bin:/usr/local/cuda/bin:/opt/local/bin:/opt/local/sbin:/usr/bin/c++:/usr/bin/make:$PATH \
     PYTHONPATH=/opt/ros/${ROS_DISTRO}/lib/python3.10/site-packages \
     # Used by various ROS2 packages
     RMW_IMPLEMENTATION=rmw_${RMW_NAME}_cpp \
@@ -47,6 +52,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         git \
         git-lfs \
         nano \
+        pkg-config \
     && locale-gen ${LANG} \
     && update-locale LC_ALL=${LC_ALL} LANG=${LANG}\
     && ln -fs /usr/share/zoneinfo/${TZ} /etc/localtime \
@@ -65,9 +71,6 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     && apt clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Development stage
-FROM base AS dev
-
 # Install development tools and dependencies
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     apt update && apt install -y --no-install-recommends \
@@ -77,6 +80,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         gdb \
         openssh-client \
         python3-pip \
+        python3-colcon-common-extensions \
         vim \
         doxygen \
         graphviz \
@@ -96,8 +100,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 # Used by elevation_mapping_cupy and not rosdep resolvable for cuda version
 RUN python3 -m pip install -U --extra-index-url https://download.pytorch.org/whl/cu121 \
     torch \
-    torchvision \
-    torchaudio
+    torchvision 
 
 # Install Python packages
 RUN python3 -m pip install \
@@ -119,30 +122,18 @@ RUN python3 -m pip install \
     flake8-import-order\
     flake8-class-newline\
     flake8-blind-except\
-    flake8-quotes
+    flake8-quotes \
+    scikit-learn \
+    opencv-python\
+    simple-parsing\
+    cupy-cuda12x \
+    transforms3d \
+    scipy \
+    chainer \ 
+    numpy==1.26.4 
     # For Python code formatting. Not sure what package uses it
     # black==21.12b0\
-#### For elevation_mapping_cupy ####
-RUN if [ "$INSTALL_EMCUPY_ROSDEPS" = true ]; then \
-        python3 -m pip install \
-        # rosdep resolves with apt python-ruamel.yaml
-        # ruamel.yaml\
-        # rosdep resolves with apt python3-sklearn - might not be needed
-        scikit-learn\
-        # rosdep resolves with apt python3-shapely
-        # shapely\
-        # rosdep resolves with apt python3-opencv
-        opencv-python\
-        # rosdep resolves using extra rosdeps
-        cupy-cuda12x\
-        # rosdep resolves using extra rosdeps
-        simple-parsing\
-        # rosdep resolves using extra rosdeps
-        "numpy<2.0.0"; \
-    fi
 
-# Needed for elevation_mapping_cupy to not have run-time errors
-RUN python3 -m pip install transforms3d scipy -U
 
 # Set up non-root user
 RUN groupadd --gid $USER_GID $USERNAME \
@@ -206,48 +197,62 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         ros-${ROS_DISTRO}-turtlebot3-teleop\
         # replacing with rosdep gazebo_ros_pkgs
         ros-${ROS_DISTRO}-gazebo-ros-pkgs\
+        ros-${ROS_DISTRO}-grid-map \
+        ros-${ROS_DISTRO}-grid-map-msgs\
+        ros-${ROS_DISTRO}-rqt-graph \
+        ros-${ROS_DISTRO}-rqt-common-plugins\
         #############################################
         && apt clean && \
         rm -rf /var/lib/apt/lists/* ;\
     fi
-# Development stage
-FROM dev as dev2
+
 ARG WORKSPACE="/home/${USERNAME}/workspace"
 
 RUN mkdir -p ${WORKSPACE}/src/elevation_mapping_cupy && chown -R ${USER_UID}:${USER_GID} /home/${USERNAME}
 RUN echo "if [ -f ${WORKSPACE}/install/setup.bash ]; then source ${WORKSPACE}/install/setup.bash; fi" >> /home/ros/.bashrc
 WORKDIR ${WORKSPACE}
 
-
 # Setup rosdep
 RUN rosdep init
-# COPY docker/extra_rosdeps.yaml /etc/ros/rosdep/sources.list.d/emcupy-rosdeps-fixed.yaml
-# Setup rosdep with extra rosdeps and install them for elevation_mapping_cupy
-# RUN --mount=type=cache,target=/home/${USERNAME}/.ros/rosdep/sources.cache \
-# RUN if [ "$INSTALL_EMCUPY_ROSDEPS" = true ]; then \
-#         echo "yaml file:///etc/ros/rosdep/sources.list.d/emcupy-rosdeps-fixed.yaml" | tee /etc/ros/rosdep/sources.list.d/01-emcupy-rosdeps.list && \
-#         rosdep update && \
-#         # This install doesn't seem to actually install anything, so removing
-#         apt update && \
-#         rosdep install --from-paths . --ignore-src -y -r; \
-#     fi
-# Now add the same file again, but this one is symlinked so will change if you change the file in your workspace
+
 RUN ln -s ${WORKSPACE}/src/elevation_mapping_cupy/docker/extra_rosdeps.yaml /etc/ros/rosdep/sources.list.d/emcupy-rosdeps.yaml && \
         echo "yaml file:///etc/ros/rosdep/sources.list.d/emcupy-rosdeps.yaml" | tee /etc/ros/rosdep/sources.list.d/00-emcupy-rosdeps.list;
-
-
-# Switch to non-root user
-USER $USERNAME
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD ros2 topic list > /dev/null 2>&1 || exit 1
 
-# Set ID to value not used by others on your network
-ENV ROS_DOMAIN_ID=12
 
-# For elevation_mapping_cupy
-ENV TURTLEBOT3_MODEL=waffle_realsense_depth
+# Setup
+COPY elevation_mapping_cupy /home/${USERNAME}/workspace/src/elevation_mapping_cupy
+RUN apt update && \
+    vcs import /home/${USERNAME}/workspace/src < /home/${USERNAME}/workspace/src/elevation_mapping_cupy/docker/src.repos --recursive -w $(($(nproc)/2))
+
+RUN rosdep update && \
+    rosdep install --from-paths /home/${USERNAME}/workspace/src --ignore-src -y -r --skip-keys="numpy catkin roscpp"
+    
+SHELL ["/bin/bash", "-c"]
+RUN bash /home/${USERNAME}/workspace/src/elevation_mapping_cupy/docker/build.sh
+
+
+# RUN source /opt/ros/${ROS_DISTRO}/setup.bash && \
+#     colcon build \
+# --continue-on-error \
+# --parallel-workers $(nproc) \
+# --merge-install \
+# --symlink-install \
+# --event-handlers console_cohesion+ \
+# --base-paths src \
+# --cmake-args \
+#         -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
+#         -DCMAKE_EXPORT_COMPILE_COMMANDS=On \
+#         -DBUILD_TESTING=OFF \
+#         "-DCMAKE_CXX_FLAGS= -Wl, --allow-shlib-undefined -Wall -Wextra -Wpedantic -Wshadow" \
+# --packages-skip \
+#         convex_plane_decomposition \
+#         convex_plane_decomposition_ros
+
+# RUN echo "source /home/${USERNAME}/workspace/install/setup.bash" >> /home/$USERNAME/.bashrc
 
 # Set the default command to bash
 CMD ["bash"]
