@@ -35,7 +35,19 @@ If you want to use the code with a rosbag, then you have two options:
 1. **Option 1:** Change the path [here](https://github.com/iit-DLSLab/elevation_mapping_gpu_ros2/blob/main/elevation_mapping_cupy/docker/run.sh#L9), with the path where you rosbags are usually stored
 2. **Option 2:** Run the Docker image with `./elevation_mapping_cupy/docker/run.sh /your_path/to/rosbags`
 
-In both cases, when you enter the Docker you see two folders in your Docker home: `workspace` and `rosbags`. The first one is where you can access, possibly change (if needed) and build the code of the elevation mapping, where the second one is where you can run your rosbags with `ros2 run your_rosbag --loop`.
+In both cases, when you enter the Docker you see two folders in your Docker home: `workspace` and `rosbags`. The first one is where you can access, possibly change (if needed), and build the code of the elevation mapping, where the second one is where you can run your rosbags with `ros2 run your_rosbag --loop`.
+
+To visualize the grid_map on RViz:
+	- Click `Add` --> `By display type` --> `GridMap`
+	- Select `GridMap` --> then set the Topic to `/elevation_mapping_node/elevation_map_raw`
+	- In the GridMap panel --> use the Layer dropdown to pick e.g. "elevation" or "traversability"
+	You can do the same with the `/elevation_mapping_node/elevation_map_filter topic`
+
+ ![image](https://github.com/user-attachments/assets/d5500a0c-a635-458d-a149-ed3debec73b6)
+
+
+ 
+
 
 
 
