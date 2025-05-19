@@ -4,7 +4,11 @@
 IMAGE_NAME="elevation_mapping_cupy_ros2:latest"
 
 # Path to your ROS workspace on the host
-HOST_WORKSPACE="/home/fischer/Desktop/Fischer/iit/elevation_mapping_ros2" # Path to your ROS workspace in the container
+
+HOST_WORKSPACE=$(pwd) # Path to your ROS workspace in the container
+ROSBAGPATH=${1:-"/rosbag_path"} # Path to the rosbag directory in the container
+
+echo $HOST_WORKSPACE
 
 # Define environment variables for graphical output
 XSOCK=/tmp/.X11-unix
@@ -27,8 +31,9 @@ RUN_COMMAND="docker run \
   --privileged \
   --net=host \
   -e HOST_USERNAME=$(whoami) \
-  -v ${HOST_WORKSPACE}:/home/ros/workspace/src \
+  -v ${HOST_WORKSPACE}/elevation_mapping_cupy:/home/ros/workspace/src/elevation_mapping_cupy \
   -v /media:/media \
+  -v ${ROSBAGPATH}:/home/ros/rosbags \
   --gpus all \
   --user 1000:1000 \
   -it $IMAGE_NAME"
