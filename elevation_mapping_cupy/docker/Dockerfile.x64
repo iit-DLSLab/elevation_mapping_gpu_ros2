@@ -12,8 +12,14 @@ ARG ROS_DISTRO=humble
 ARG USERNAME=ros
 ARG USER_UID=1000
 ARG USER_GID=$USER_UID
-ARG RMW_NAME=zenoh
 ARG INSTALL_EMCUPY_ROSDEPS=true
+
+# Change this to the desired RMW implementation
+# ARG RMW_NAME=zenoh
+# ARG RMW_NAME=fastdds
+ARG RMW_NAME=cyclonedds
+# ARG RMW_NAME=fastrtps
+
 
 # BUILD TYPE Debug, Release, RelWithDebInfo, MinSizeRel
 ARG BUILD_TYPE=RelWithDebInfo 
@@ -66,6 +72,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | tee /etc/apt/sources.list.d/ros2.list > /dev/null \
     && apt update && apt install -y --no-install-recommends \
         ros-${ROS_DISTRO}-ros-base \
+        ros-${ROS_DISTRO}-rmw-fastrtps-cpp \
+        ros-${ROS_DISTRO}-rmw-cyclonedds-cpp \
         python3-argcomplete \
         ros-${ROS_DISTRO}-${RMW_IMPLEMENTATION_DASH} \
     && apt clean \
@@ -234,25 +242,6 @@ RUN rosdep update && \
 SHELL ["/bin/bash", "-c"]
 RUN bash /home/${USERNAME}/workspace/src/elevation_mapping_cupy/docker/build.sh
 
-
-# RUN source /opt/ros/${ROS_DISTRO}/setup.bash && \
-#     colcon build \
-# --continue-on-error \
-# --parallel-workers $(nproc) \
-# --merge-install \
-# --symlink-install \
-# --event-handlers console_cohesion+ \
-# --base-paths src \
-# --cmake-args \
-#         -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
-#         -DCMAKE_EXPORT_COMPILE_COMMANDS=On \
-#         -DBUILD_TESTING=OFF \
-#         "-DCMAKE_CXX_FLAGS= -Wl, --allow-shlib-undefined -Wall -Wextra -Wpedantic -Wshadow" \
-# --packages-skip \
-#         convex_plane_decomposition \
-#         convex_plane_decomposition_ros
-
-# RUN echo "source /home/${USERNAME}/workspace/install/setup.bash" >> /home/$USERNAME/.bashrc
 
 # Set the default command to bash
 CMD ["bash"]
