@@ -9,7 +9,7 @@ repositories:
     url: https://github.com/Box-Robotics/ros2_numpy.git
     version: humble
   # added for testing elevation_mapping_cupy
-  turtlebot3_simulations:
-    type: git
-    url: https://github.com/jwag/turtlebot3_simulations.git
-    version: humble_realsense_depth
+  #turtlebot3_simulations:
+  #  type: git
+  #  url: https://github.com/jwag/turtlebot3_simulations.git
+  #  version: humble_realsense_depth

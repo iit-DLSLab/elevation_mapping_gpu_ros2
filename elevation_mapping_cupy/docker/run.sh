@@ -30,11 +30,12 @@ RUN_COMMAND="docker run \
   --cap-add=sys_nice \
   --privileged \
   --net=host \
+  --name=elevation_mapping \
   -e HOST_USERNAME=$(whoami) \
   -v ${HOST_WORKSPACE}/elevation_mapping_cupy:/home/ros/workspace/src/elevation_mapping_cupy \
   -v /media:/media \
   -v ${ROSBAGPATH}:/home/ros/rosbags \
-  --gpus all \
+  --runtime=nvidia \
   --user 1000:1000 \
   -it $IMAGE_NAME"
 

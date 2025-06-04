@@ -53,7 +53,6 @@
     <depend>python3-transforms3d</depend>
 
     <!-- For turtlebot3 simulation -->
-    <depend>gazebo_ros_pkgs</depend>
     <depend>turtlebot3_msgs</depend>
     <depend>turtlebot3_teleop</depend>
     <depend>camera_info_manager</depend>

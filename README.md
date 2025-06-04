@@ -12,7 +12,7 @@ git clone git@github.com:iit-DLSLab/elevation_mapping_gpu_ros2.git
 ```
 Build the Docker:
 ```
-sudo docker build -f elevation_mapping_cupy/docker/Dockerfile.x64 -t elevation_mapping_cupy_ros2:latest .
+sudo docker build -f elevation_mapping_cupy/docker/Dockerfile.Orin -t elevation_mapping_cupy_ros2:latest .
 ```
 Enter the Docker:
 ```
@@ -27,7 +27,7 @@ To launch the elevation map:
  ```
 2) Find the container name with docker ps, then in T2:
 ```
-docker exec -it <container-name-or-id> bash
+docker exec -it elevation_mapping bash
 ros2 launch elevation_mapping_cupy elevation_mapping.launch.py
 ```
 
