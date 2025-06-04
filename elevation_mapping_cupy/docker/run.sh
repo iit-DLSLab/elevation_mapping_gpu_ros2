@@ -4,9 +4,9 @@
 IMAGE_NAME="elevation_mapping_cupy_ros2:latest"
 
 # Path to your ROS workspace on the host
-
 HOST_WORKSPACE=$(pwd) # Path to your ROS workspace in the container
 ROSBAGPATH=${1:-"/rosbag_path"} # Path to the rosbag directory in the container
+ROS_DOMAIN=1                    # Change ROS DOMAIN ID if needed
 
 echo $HOST_WORKSPACE
 
@@ -20,12 +20,13 @@ if [ ! -f $XAUTH ]; then
 fi
 
 echo "---------------------"
-RUN_COMMAND="docker run \
+RUN_COMMAND="docker run  \
   --volume=$XSOCK:$XSOCK:rw \
   --volume=$XAUTH:$XAUTH:rw \
   --env=\"QT_X11_NO_MITSHM=1\" \
   --env=\"XAUTHORITY=$XAUTH\" \
   --env=\"DISPLAY=$DISPLAY\" \
+  --env=\"ROS_DOMAIN_ID=$ROS_DOMAIN\" \
   --ulimit rtprio=99 \
   --cap-add=sys_nice \
   --privileged \
