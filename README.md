@@ -27,7 +27,7 @@ To launch the elevation map:
  ```
 2) Find the container name with docker ps, then in T2:
 ```
-docker exec -it <container-name-or-id> bash
+docker exec -it elevation_mapping bash
 ros2 launch elevation_mapping_cupy elevation_mapping.launch.py
 ```
 
