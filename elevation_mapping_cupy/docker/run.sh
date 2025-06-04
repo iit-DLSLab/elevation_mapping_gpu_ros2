@@ -30,6 +30,7 @@ RUN_COMMAND="docker run \
   --cap-add=sys_nice \
   --privileged \
   --net=host \
+  --name=elevation_mapping \
   -e HOST_USERNAME=$(whoami) \
   -v ${HOST_WORKSPACE}/elevation_mapping_cupy:/home/ros/workspace/src/elevation_mapping_cupy \
   -v /media:/media \
