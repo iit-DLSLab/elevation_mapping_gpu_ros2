@@ -25,10 +25,10 @@ elevation_mapping:
     #    camera_info_topic_name: '/camera/depth/camera_info'
     #    channel_info_topic_name: '/camera/channel_info'
 
-
+    #topic_name: '/velodyne_points'
     subscribers:
       pointcloud_sensor_name:
-        topic_name: '/velodyne_points'
+        topic_name: '/unilidar/cloud'
         data_type: pointcloud
 
       # front_cam:

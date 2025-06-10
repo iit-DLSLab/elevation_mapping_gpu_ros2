@@ -49,8 +49,8 @@ elevation_mapping_node:
     overlap_clear_range_xy: 4.0                     # xy range [m] for clearing overlapped area. this defines the valid area for overlap clearance. (used for multi floor setting)
     overlap_clear_range_z: 2.0                      # z range [m] for clearing overlapped area. cells outside this range will be cleared. (used for multi floor setting)
     # pose_topic: '/kiss/odometry'
-    map_frame: 'map'                               # The map frame where the odometry source uses.
-    base_frame: 'robot'                    # The robot's base frame. This frame will be a center of the map.
+    map_frame: 'unilidar_lidar'                               # The map frame where the odometry source uses.
+    base_frame: 'unilidar_lidar'                            # The robot's base frame. This frame will be a center of the map.
     corrected_map_frame: 'map_corrected'
 
 
@@ -73,7 +73,7 @@ elevation_mapping_node:
 
     #### Initializer ########
     initialize_method: 'linear'                                         # Choose one from 'nearest', 'linear', 'cubic'
-    initialize_frame_id: ['robot']                        # One tf (like ['footprint'] ) initializes a square around it.
+    initialize_frame_id: ['unilidar_lidar']                             # One tf (like ['footprint'] ) initializes a square around it.
     initialize_tf_offset: [0.0, 0.0, 0.0, 0.0]                          # z direction. Should be same number as initialize_frame_id.
     dilation_size_initialize: 2                                         # dilation size after the init.
     initialize_tf_grid_size: 1.0                                        # This is not used if number of tf is more than 3.
