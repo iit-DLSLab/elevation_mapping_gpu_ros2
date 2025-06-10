@@ -5,21 +5,40 @@ services:
   elevation_mapping:
     image: "elevation_mapping_cupy_ros2:latest"
     container_name: "elevation_mapping_package"
-    env_file: "docker/.ros-env"
+    env_file: ".ros-env"
+    runtime: nvidia
     environment:
-      environment:
       DISPLAY: $DISPLAY
       NVIDIA_DRIVER_CAPABILITIES: all
       QT_X11_NO_MITSHM: 1
+      NVIDIA_VISIBLE_DEVICES: all
     volumes: 
       - /tmp/.X11-unix:/tmp/.X11-unix
       - ~/.Xauthority:/root/.Xauthority
       - /dev/bus/usb:/dev/bus/usb
-      - elevation_mapping_cupy/elevation_mapping_cupy:/home/ros/workspace/src/elevation_mapping_cupy
+      - ../elevation_mapping_cupy/config:/home/ros/workspace/install/share/elevation_mapping_cupy/config
     device_cgroup_rules:
       - 'c 189:* rmw'
       - 'c 81:* rmw'
     network_mode: "host"
     privileged: true
     tty: true
-    command: " ros2 launch elevation_mapping_cupy elevation_mapping.launch.py"
+    command: /bin/bash -c " source /home/ros/workspace/.map_env/bin/activate; \
+             source /home/ros/workspace/install/setup.bash; \ 
+             ros2 launch elevation_mapping_cupy elevation_mapping.launch.py"
+  
+  rviz: 
+    image: "elevation_mapping_cupy_ros2:latest"
+    container_name: "elevation_mapping_rviz"
+    env_file: ".ros-env"
+    environment:
+      DISPLAY: $DISPLAY
+      QT_X11_NO_MITSHM: 1
+    volumes: 
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - ~/.Xauthority:/root/.Xauthority
+      - /dev/bus/usb:/dev/bus/usb
+    network_mode: "host"
+    privileged: true
+    tty: true
+    command: ros2 run rviz2 rviz2

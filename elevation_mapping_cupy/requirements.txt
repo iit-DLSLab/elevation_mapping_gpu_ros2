@@ -1,6 +1,6 @@
 ###### Requirements without Version Specifiers ######`
 numpy
-scipy==1.7
+#scipy==1.7
 ruamel.yaml
 opencv-python
 simple-parsing
