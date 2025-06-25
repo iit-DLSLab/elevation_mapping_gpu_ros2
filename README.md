@@ -1,5 +1,5 @@
 # elevation_mapping_gpu_ros2
-This repo contains the implementation of elevation mapping cupy for ros2 humble.
+This repo contains the implementation of [elevation mapping cupy from ETH](https://github.com/leggedrobotics/elevation_mapping_cupy) for ros2 humble, following this [PR](https://github.com/leggedrobotics/elevation_mapping_cupy/pull/110).
 Issues and planning related to the elevation mapping. We can share the code, issues, etc.. here
 
 
