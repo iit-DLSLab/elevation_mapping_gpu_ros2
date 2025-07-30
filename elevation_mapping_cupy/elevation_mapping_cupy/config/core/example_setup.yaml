@@ -15,9 +15,9 @@ elevation_mapping:
       feat_.*: 'exponential'      # 'exponential' fusion is also used for any channel starting with 'feat_' Regular expressions can be used for channel names
 
     #### Subscribers ########
-    #  pointcloud_sensor_name:
-    #    topic_name: '/sensor/pointcloud_semantic'
-    #    data_type:  pointcloud  # pointcloud or image
+      pointcloud_sensor_name:
+       topic_name: '/realsense/front/camera/depth/color/points'
+       data_type:  pointcloud  # pointcloud or image
     #
     #  image_sensor_name:
     #    topic_name: '/camera/image_semantic'
@@ -26,10 +26,10 @@ elevation_mapping:
     #    channel_info_topic_name: '/camera/channel_info'
 
 
-    subscribers:
-      pointcloud_sensor_name:
-        topic_name: '/velodyne_points'
-        data_type: pointcloud
+    # subscribers:
+    #   pointcloud_sensor_name:
+    #     topic_name: '/velodyne_points'
+    #     data_type: pointcloud
 
       # front_cam:
       #   topic_name: '/camera/depth/points'

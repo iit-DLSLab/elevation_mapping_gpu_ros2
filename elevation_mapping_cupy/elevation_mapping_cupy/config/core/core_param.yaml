@@ -6,8 +6,8 @@ elevation_mapping_node:
     drift_compensation_variance_inlier: 0.1
     checker_layer: 'elevation'                # layer name for checking the validity of the cell.
     initialized_variance: 10.0                     # initial variance for each cell.    
-    resolution: 0.1                                # resolution in m.  
-    map_length: 20.0                                 # map's size in m.
+    resolution: 0.04                                # resolution in m.  
+    map_length: 5.0                                 # map's size in m.
     sensor_noise_factor: 0.05                       # point's noise is sensor_noise_factor*z^2 (z is distance from sensor).
     mahalanobis_thresh: 2.0                         # points outside this distance is outlier.
     outlier_variance: 0.01                          # if point is outlier, add this value to the cell.
@@ -31,11 +31,11 @@ elevation_mapping_node:
     ramped_height_range_b: 1.0                      # if z > max(d - ramped_height_range_b, 0) * ramped_height_range_a + ramped_height_range_c, reject.
     ramped_height_range_c: 0.2                      # if z > max(d - ramped_height_range_b, 0) * ramped_height_range_a + ramped_height_range_c, reject.
     update_variance_fps: 30.0                        # fps for updating variance.
-    update_pose_fps: 30.0                           # fps for updating pose and shift the center of map.
+    update_pose_fps: 10.0                           # fps for updating pose and shift the center of map.
     time_interval: 0.1                              # Time layer is updated with this interval.
-    map_acquire_fps: 30.0                            # Raw map is fetched from GPU memory in this fps.
-    publish_statistics_fps: 30.0                     # Publish statistics topic in this fps.
-    recordable_fps: 30.0                           # Recordable fps for pointcloud.
+    map_acquire_fps: 10.0                            # Raw map is fetched from GPU memory in this fps.
+    publish_statistics_fps: 10.0                     # Publish statistics topic in this fps.
+    recordable_fps: 10.0                           # Recordable fps for pointcloud.
     enable_normal_arrow_publishing: false
 
     max_ray_length: 10.0                            # maximum length for ray tracing.
@@ -48,9 +48,9 @@ elevation_mapping_node:
 
     overlap_clear_range_xy: 4.0                     # xy range [m] for clearing overlapped area. this defines the valid area for overlap clearance. (used for multi floor setting)
     overlap_clear_range_z: 2.0                      # z range [m] for clearing overlapped area. cells outside this range will be cleared. (used for multi floor setting)
-    # pose_topic: '/kiss/odometry'
+    pose_topic: '/robot_pose_slam'
     map_frame: 'map'                               # The map frame where the odometry source uses.
-    base_frame: 'robot'                    # The robot's base frame. This frame will be a center of the map.
+    base_frame: 'camera_depth_optical_frame'                            # The robot's base frame. This frame will be a center of the map.
     corrected_map_frame: 'map_corrected'
 
 
@@ -73,7 +73,7 @@ elevation_mapping_node:
 
     #### Initializer ########
     initialize_method: 'linear'                                         # Choose one from 'nearest', 'linear', 'cubic'
-    initialize_frame_id: ['robot']                        # One tf (like ['footprint'] ) initializes a square around it.
+    initialize_frame_id: ['camera_depth_optical_frame']                        # One tf (like ['footprint'] ) initializes a square around it.
     initialize_tf_offset: [0.0, 0.0, 0.0, 0.0]                          # z direction. Should be same number as initialize_frame_id.
     dilation_size_initialize: 2                                         # dilation size after the init.
     initialize_tf_grid_size: 1.0                                        # This is not used if number of tf is more than 3.

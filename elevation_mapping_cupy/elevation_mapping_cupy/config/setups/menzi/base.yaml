@@ -16,7 +16,7 @@ elevation_mapping_node:
 
     subscribers:
       pointcloud_sensor_name:
-        topic_name: '/velodyne_points'
+        topic_name: '/realsense/front/camera/depth/color/points'
         data_type: pointcloud
 
     publishers:
