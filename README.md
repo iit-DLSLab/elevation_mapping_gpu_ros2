@@ -1,6 +1,6 @@
 # elevation_mapping_gpu_ros2
 This repo contains the implementation of [elevation mapping cupy from ETH](https://github.com/leggedrobotics/elevation_mapping_cupy) for ros2 humble, following this [PR](https://github.com/leggedrobotics/elevation_mapping_cupy/pull/110).
-Issues and planning related to the elevation mapping. We can share the code, issues, etc.. here
+Issues and planning related to the elevation mapping. We can share the code, issues, etc... here
 
 
 ## Build Docker Image
@@ -20,8 +20,7 @@ cd elevation_mapping_gpu_ros2
 ./elevation_mapping_cupy/docker/run.sh
 ```
 
-To launch the elevation map:
-Find the container name with docker ps:
+To launch the elevation map node, find the container name with docker ps:
 ```
 ros2 launch elevation_mapping_cupy elevation_mapping.launch.py
 ```
