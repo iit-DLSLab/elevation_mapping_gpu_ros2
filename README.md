@@ -21,13 +21,8 @@ cd elevation_mapping_gpu_ros2
 ```
 
 To launch the elevation map:
-1) In Terminal 1 (T1):
- ```
- ros2 run rmw_zenoh_cpp rmw_zenohd
- ```
-2) Find the container name with docker ps, then in T2:
+Find the container name with docker ps:
 ```
-docker exec -it elevation_mapping bash
 ros2 launch elevation_mapping_cupy elevation_mapping.launch.py
 ```
 
