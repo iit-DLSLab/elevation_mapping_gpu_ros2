@@ -1,7 +1,10 @@
 # syntax=docker/dockerfile:1.4
 
 # Base image
-FROM nvidia/cuda:12.0.1-cudnn8-devel-ubuntu22.04
+FROM nvidia/cuda:12.1.1-cudnn8-devel-ubuntu22.04
+
+# Base image
+# FROM nvidia/cuda:12.0.1-cudnn8-devel-ubuntu22.04     # To solve the cuda hardware compatibility issue in the new laptop
 
 # Metadata
 LABEL description="ROS2 environment with CUDA support"

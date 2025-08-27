@@ -5,7 +5,7 @@ set -euo pipefail
 IMAGE_NAME="${IMAGE_NAME:-elevation_mapping_cupy_ros2:latest}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-HOST_WORKSPACE="$(cd "${SCRIPT_DIR}/.." && pwd)"     # repo root
+HOST_WORKSPACE="$(cd "${SCRIPT_DIR}/.." && pwd)"     
 ROS_ENV="${ROS_ENV:-$SCRIPT_DIR/../../../config/.ros_env}"
 
 # Path inside container where repo is mounted (source tree)
