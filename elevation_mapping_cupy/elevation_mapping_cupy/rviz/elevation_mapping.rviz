@@ -1,0 +1,105 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+  - Class: rviz_common/Views
+    Name: Views
+
+Visualization Manager:
+  Class: ""
+  Enabled: true
+  Global Options:
+    Background Color: 48; 48; 48
+    Fixed Frame: map
+    Frame Rate: 30
+
+  Displays:
+    - Class: rviz_default_plugins/Grid
+      Name: Grid
+      Enabled: true
+      Plane: XY
+      Normal Cell Count: 0
+      Cell Size: 1
+      Plane Cell Count: 20
+      Color: 160; 160; 160
+      Line Style:
+        Value: Lines
+        Line Width: 0.03
+      Reference Frame: <Fixed Frame>
+
+    - Class: rviz_default_plugins/TF
+      Name: TF
+      Enabled: true
+      Show Arrows: true
+      Show Axes: true
+      Show Names: false
+      Marker Scale: 1
+      Update Interval: 0
+      Frame Timeout: 15
+      Frames:
+        All Enabled: false
+        map: { Value: true }
+        base_footprint: { Value: true }
+        camera_link: { Value: true }
+        camera_depth_optical_frame: { Value: true }
+      Tree: {}
+
+    - Class: grid_map_rviz_plugin/GridMap
+      Name: GridMap
+      Enabled: true
+      Topic:
+        Value: /elevation_mapping_node/elevation_map_raw
+      History Length: 1
+      Show Grid Lines: true
+      Height Layer: elevation
+      Color Layer: elevation
+      Height Transformer: GridMapLayer
+      Color Transformer: GridMapLayer
+      Use Rainbow: true
+      Invert Rainbow: false
+      Autocompute Intensity Bounds: true
+
+    - Class: rviz_default_plugins/PointCloud2
+      Name: PointCloud2
+      Enabled: true
+      Topic:
+        Value: /realsense/front/camera/depth/color/points
+      Queue Size: 10
+      Style: Flat Squares
+      Size (m): 0.01
+      Alpha: 1
+      Decay Time: 0
+      Position Transformer: XYZ
+      Color Transformer: Intensity
+      Channel Name: intensity
+      Use Rainbow: false
+      Autocompute Intensity Bounds: true
+
+  Tools:
+    - Class: rviz_default_plugins/Interact
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Select
+    - Class: rviz_default_plugins/FocusCamera
+    - Class: rviz_default_plugins/Measure
+    - Class: rviz_default_plugins/PublishPoint
+
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 7.0
+      Focal Point: { X: 0.0, Y: 0.0, Z: 0.0 }
+      Pitch: 0.47
+      Yaw: 4.20
+      Near Clip Distance: 0.01
+      Target Frame: <Fixed Frame>
+    Saved: ~
+
+Window Geometry:
+  Displays:
+    collapsed: false
+  Views:
+    collapsed: false
+  Height: 900
+  Width: 1600
+  X: 100
+  Y: 60
+
