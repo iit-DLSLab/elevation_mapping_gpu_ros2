@@ -1,0 +1,28 @@
+# elevation_mapping_cupy/config/setups/standalone/realsense_orbslam3.yaml
+elevation_mapping_node:
+  ros__parameters:
+    # Frames (match your TF tree)
+    map_frame: map
+    base_frame: base_footprint
+    corrected_map_frame: map              # keep same as map if you don’t use drift correction yet
+    initialize_frame_id: camera_depth_optical_frame
+
+    # Input topics (pick one)
+    subscriber_cfg:
+      pointcloud_topic: /realsense/front/camera/depth/color/points
+      # pointcloud_topic: /orbslam3/pointcloud            # ← use this if ORB-SLAM3 publishes a PointCloud2
+      pointcloud_queue: 5
+
+    # Common conveniences
+    use_initializer_at_start: true
+    always_clear_with_initializer: false
+    enable_pointcloud_publishing: true
+    enable_normal_arrow_publishing: false
+    enable_drift_compensation: false
+    enable_visibility_cleanup: false
+    enable_overlap_clearance: false
+
+    # Optional: set your map size/resolution here, or leave to core_param.yaml
+    # map_length: 5.0
+    # resolution: 0.05
+

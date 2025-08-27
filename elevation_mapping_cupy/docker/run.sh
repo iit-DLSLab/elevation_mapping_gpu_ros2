@@ -1,45 +1,55 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-# The Docker image name
-IMAGE_NAME="elevation_mapping_cupy_ros2:latest"
+# Image paths 
+IMAGE_NAME="${IMAGE_NAME:-elevation_mapping_cupy_ros2:latest}"
 
-# Path to your ROS workspace on the host
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+HOST_WORKSPACE="$(cd "${SCRIPT_DIR}/.." && pwd)"     # repo root
+ROS_ENV="${ROS_ENV:-$SCRIPT_DIR/../../../config/.ros_env}"
 
-HOST_WORKSPACE=$(pwd) # Path to your ROS workspace in the container
-ROSBAGPATH=${1:-"/rosbag_path"} # Path to the rosbag directory in the container
+# Path inside container where repo is mounted (source tree)
+PKG_IN_CONTAINER="/home/ros/workspace/src/elevation_mapping_cupy"
 
-echo $HOST_WORKSPACE
+# RViz config from HOST
+RVIZ_HOST_DIR="${RVIZ_HOST_DIR:-$HOST_WORKSPACE/elevation_mapping_cupy/rviz}"
+RVIZ_FILE="${RVIZ_FILE:-elevation_mapping.rviz}"
+RVIZ_CFG_IN_CONTAINER="/rviz_config/${RVIZ_FILE}"
 
-# Define environment variables for graphical output
-XSOCK=/tmp/.X11-unix
-XAUTH=/tmp/.docker.xauth
-if [ ! -f $XAUTH ]; then
-    touch $XAUTH
-    xauth nlist :0 | sed -e 's/^..../ffff/' | xauth -f $XAUTH nmerge -
-    chmod a+r $XAUTH
-fi
+# Select robot config (RELATIVE path under installed share/config/setups) 
+# Keep default menzi/base.yaml unless you have another file INSTALLED.
+ROBOT_CONFIG_REL="${ROBOT_CONFIG_REL:-menzi/base.yaml}"
 
-echo "---------------------"
-RUN_COMMAND="docker run \
-  --volume=$XSOCK:$XSOCK:rw \
-  --volume=$XAUTH:$XAUTH:rw \
-  --env=\"QT_X11_NO_MITSHM=1\" \
-  --env=\"XAUTHORITY=$XAUTH\" \
-  --env=\"DISPLAY=$DISPLAY\" \
-  --ulimit rtprio=99 \
-  --cap-add=sys_nice \
-  --privileged \
-  --net=host \
+# X11 
+DISPLAY="${DISPLAY:-:0}"
+
+# Command inside container 
+LAUNCH_CMD=$(cat <<'BASH'
+set -e
+source /opt/ros/humble/setup.bash
+source /home/ros/workspace/install/setup.bash 2>/dev/null || true
+echo "[INFO] ROS_DOMAIN_ID=$ROS_DOMAIN_ID  RMW=$RMW_IMPLEMENTATION"
+
+# Call your launch with the args it actually supports.
+ros2 launch elevation_mapping_cupy elevation_mapping.launch.py \
+  robot_config:="$ROBOT_CONFIG_REL" \
+  rviz_config:="$RVIZ_CFG_IN_CONTAINER"
+BASH
+)
+
+# Run container
+docker run --rm -it \
   --name=elevation_mapping \
-  -e HOST_USERNAME=$(whoami) \
-  -v ${HOST_WORKSPACE}/elevation_mapping_cupy:/home/ros/workspace/src/elevation_mapping_cupy \
-  -v /media:/media \
-  -v ${ROSBAGPATH}:/home/ros/rosbags \
+  --network host \
+  --ipc host \
   --gpus all \
-  --user 1000:1000 \
-  -it $IMAGE_NAME"
-
-echo -e "[run.sh]: \e[1;32mThe final run command is:\n\e[0;35m$RUN_COMMAND\e[0m."
-eval $RUN_COMMAND
-echo -e "[run.sh]: \e[1;32mDocker terminal closed.\e[0m"
+  --env-file "$ROS_ENV" \
+  -e DISPLAY="$DISPLAY" \
+  -e NVIDIA_DRIVER_CAPABILITIES=compute,utility,video \
+  -e ROBOT_CONFIG_REL="$ROBOT_CONFIG_REL" \
+  -e RVIZ_CFG_IN_CONTAINER="$RVIZ_CFG_IN_CONTAINER" \
+  -v /tmp/.X11-unix:/tmp/.X11-unix:ro \
+  -v "${HOST_WORKSPACE}:${PKG_IN_CONTAINER}:ro" \
+  -v "${RVIZ_HOST_DIR}:/rviz_config:ro" \
+  "$IMAGE_NAME" bash -lc "$LAUNCH_CMD"
 

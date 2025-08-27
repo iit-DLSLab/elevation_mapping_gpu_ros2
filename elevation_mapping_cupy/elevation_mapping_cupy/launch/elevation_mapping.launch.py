@@ -37,7 +37,7 @@ def generate_launch_description():
 
     use_sim_time_arg = DeclareLaunchArgument(
         'use_sim_time',
-        default_value='true',
+        default_value='false',
         description='Use simulation clock if true'
     )
 
@@ -76,7 +76,7 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
-        robot_param_arg,
+	robot_param_arg,
         launch_rviz_arg,
         rviz_config_arg,
         use_sim_time_arg,
