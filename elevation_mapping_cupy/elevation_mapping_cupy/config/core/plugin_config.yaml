@@ -1,36 +1,60 @@
-# min_filter fills in minimum value around the invalid cell.
-min_filter:                                   
-  enable: True                                # weather to load this plugin
-  fill_nan: False                             # Fill nans to invalid cells of elevation layer.
-  is_height_layer: True                       # If this is a height layer (such as elevation) or not (such as traversability)
-  layer_name: "min_filter"                    # The layer name.
-  extra_params:                               # This params are passed to the plugin class on initialization.
-    dilation_size: 1                         # The patch size to apply
-    iteration_n: 30                           # The number of iterations
-# Apply smoothing.
+# ---------------------- Plugin Configuration for Elevation Mapping ----------------------
+# Each block below configures a post-processing plugin for the elevation map.
+# These plugins operate sequentially in the map update pipeline, refining the height and traversability layers.
+
+# -----------------------------------------------------------------------------------------
+# Min Filter Plugin
+# -----------------------------------------------------------------------------------------
+min_filter:
+  enable: True                      # Whether to load this plugin.
+                                    # Enabled when you want to fill gaps in the elevation layer with the local minimum.
+  fill_nan: False                   # If True: replace NaN cells with filled-in values.
+                                    # If False: keep NaN cells unchanged (only overwrite non-NaN cells if applicable).
+  is_height_layer: True             # True for height-based layers (e.g., elevation); False for feature layers (e.g., traversability).
+  layer_name: "min_filter"          # Name of the resulting layer.
+  extra_params:                     # Parameters passed directly to the plugin class upon initialization.
+    dilation_size: 1                # Patch size (in grid cells) for morphological dilation. Controls the neighborhood for min search.
+                                    # A larger value means the plugin looks farther around each invalid cell for valid data.
+    iteration_n: 30                 # Number of iterations to apply the min filter.
+                                    # Higher values cause more aggressive filling and may over-smooth if too large.
+
+# -----------------------------------------------------------------------------------------
+# Smooth Filter Plugin
+# -----------------------------------------------------------------------------------------
 smooth_filter:
-  enable: True
-  fill_nan: False
-  is_height_layer: True
-  layer_name: "smooth"
+  enable: True                      # Enable this plugin to smooth the elevation map.
+  fill_nan: False                   # If True: NaNs are replaced during smoothing.
+  is_height_layer: True             # This operates on a height layer (the output is smoothed height values).
+  layer_name: "smooth"              # Name of the resulting layer.
   extra_params:
-    input_layer_name: "min_filter"
-# Apply inpainting using opencv
+    input_layer_name: "min_filter"  # Source layer to smooth (output from min_filter).
+                                    # Using min_filter first helps handle NaNs before smoothing.
+
+# -----------------------------------------------------------------------------------------
+# Inpainting Plugin (OpenCV-based)
+# -----------------------------------------------------------------------------------------
 inpainting:
-  enable: True
-  fill_nan: False
-  is_height_layer: True
-  layer_name: "inpaint"
+  enable: True                      # Enable OpenCV-based inpainting to fill in missing height data.
+  fill_nan: True                    # If True: NaN cells are filled in during inpainting.
+  is_height_layer: True             # True because this operates on the elevation (height) layer.
+  layer_name: "inpaint"             # Name of the resulting inpainted layer.
   extra_params:
-    method: "telea"                           # telea or ns
-# Apply smoothing for inpainted layer
+    method: "telea"                 # Inpainting algorithm: "telea" (fast marching) or "ns" (Navier-Stokes).
+                                    # "telea" is generally faster and works well for heightmaps with smooth transitions.
+
+# -----------------------------------------------------------------------------------------
+# Erosion Plugin (for Traversability Maps)
+# -----------------------------------------------------------------------------------------
 erosion:
-  enable: True
-  fill_nan: False
-  is_height_layer: False
-  layer_name: "erosion"
+  enable: False                     # Enable morphological erosion to shrink traversable areas around obstacles.
+                                    # Used to ensure the traversability layer has a safety margin around obstacles.
+  fill_nan: False                   # Whether to fill NaNs before erosion (usually False for traversability layers).
+  is_height_layer: False            # False because this operates on the traversability layer, not elevation.
+  layer_name: "erosion"             # Name of the resulting layer after erosion.
   extra_params:
-    input_layer_name: "traversability"
-    dilation_size: 3
-    iteration_n: 20
-    reverse: True
+    input_layer_name: "traversability"  # Source layer for erosion (commonly the traversability layer).
+    dilation_size: 3                # Neighborhood size for morphological operations.
+                                    # Larger values increase the erosion distance (more conservative safe zones).
+    iteration_n: 20                 # Number of iterations for erosion. More iterations -> more aggressive shrinking.
+    reverse: True                   # Reverse mode: can invert the effect depending on plugin logic.
+                                    # Often used to dilate obstacle boundaries for safety.
