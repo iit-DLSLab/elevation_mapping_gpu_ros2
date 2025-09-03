@@ -34,7 +34,7 @@ smooth_filter:
 # Inpainting Plugin (OpenCV-based)
 # -----------------------------------------------------------------------------------------
 inpainting:
-  enable: True                      # Enable OpenCV-based inpainting to fill in missing height data.
+  enable: False                      # Enable OpenCV-based inpainting to fill in missing height data.
   fill_nan: True                    # If True: NaN cells are filled in during inpainting.
   is_height_layer: True             # True because this operates on the elevation (height) layer.
   layer_name: "inpaint"             # Name of the resulting inpainted layer.
