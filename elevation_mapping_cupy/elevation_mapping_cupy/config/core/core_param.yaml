@@ -6,56 +6,58 @@ elevation_mapping_node:
     map_frame: 'map'                            # The map frame where the odometry source uses. (global/world; /robot_pose_slam is in 'map')
     base_frame: 'base_footprint'                # The robot's base frame. This frame will be a center of the map. (3D body; map window centers here)
     corrected_map_frame: 'map_corrected'        # Published when drift correction is enabled. 
-
+    checker_layer: 'elevation'
+    
     #### Grid / map geometry 
-    resolution: 0.04                            # resolution in m.  (grid cell size; trade detail vs. noise)
-    map_length: 8.0                             # map's size in m.  (square local map window side length)
+    resolution: 0.08                            # resolution in m.  (grid cell size; trade detail vs. noise)
+    map_length: 3.0                             # map's size in m.  (square local map window side length)
 
     #### Sensor & outlier handling 
     # lighter point cloud = fewer drops
-    voxel_filter_size: 0.12                     # downsample input points (speed vs. detail)
-    sensor_noise_factor: 0.1                    # point's noise is sensor_noise_factor*z^2 (z is distance from sensor).  (depth σ grows ~ z²)
+    voxel_filter_size: 0.064                      # downsample input points (speed vs. detail)
+    sensor_noise_factor: 0.08                    # point's noise is sensor_noise_factor*z^2 (z is distance from sensor).  (depth σ grows ~ z²)
 
     # reject obvious bad returns
-    min_valid_distance: 0.25                    # points with shorter distance will be filtered out. (near-field realsense noise)
-    max_height_range: 6.0                       # points higher than this value from sensor will be filtered out to disable ceiling. 
-    mahalanobis_thresh: 2.5                     # points outside this distance is outlier. (lower = stricter rejection)
-    outlier_variance: 0.05                      # if point is outlier, add this value to the cell. (de-weights outliers when fused)
+    min_valid_distance: 0.15                    # points with shorter distance will be filtered out. (near-field realsense noise)
+    max_height_range: 2.0                       # points higher than this value from sensor will be filtered out to disable ceiling. 
+    mahalanobis_thresh: 1.2                    # points outside this distance is outlier. (lower = stricter rejection)
+    outlier_variance: 0.02                      # if point is outlier, add this value to the cell. (de-weights outliers when fused)
 
     # Ramped ceiling: reject if z > max(d - ramped_height_range_b, 0)*a + c
-    ramped_height_range_a: 0.3                  # if z > max(d - ramped_height_range_b, 0) * ramped_height_range_a + ramped_height_range_c, reject.
-    ramped_height_range_b: 0.8                  # if z > max(d - ramped_height_range_b, 0) * ramped_height_range_a + ramped_height_range_c, reject.
-    ramped_height_range_c: 0.15                 # if z > max(d - ramped_height_range_b, 0) * ramped_height_range_a + ramped_height_range_c, reject.
+    ramped_height_range_a: 0.20                  # if z > max(d - ramped_height_range_b, 0) * ramped_height_range_a + ramped_height_range_c, reject.
+    ramped_height_range_b: 0.9                 # if z > max(d - ramped_height_range_b, 0) * ramped_height_range_a + ramped_height_range_c, reject.
+    ramped_height_range_c: 0.18                 # if z > max(d - ramped_height_range_b, 0) * ramped_height_range_a + ramped_height_range_c, reject.
 
     #### Variance / fusion weights 
     average_weight: 0.4                         # fusion weight; higher trusts new data more (faster but noisier)
     time_variance: 0.002                        # add this value when update_variance is called. (models slow drift/dynamics)
-    initial_variance: 0.08                      # initial variance for each cell. (first good observation)
-    max_variance: 50.0                          # maximum variance for each cell. (numeric safety)
+    initial_variance: 100.0                    # initial variance for each cell. (first good observation)
+    initialized_variance: 10.0                  # (add back; used for newly observed cells)
+    max_variance: 100.0                         # maximum variance for each cell. (numeric safety)
 
     #### Timings & rates 
-    update_variance_fps: 30.0                   # fps for updating variance.
-    update_pose_fps: 10.0                       # fps for updating pose and shift the center of map.
+    update_variance_fps: 18.0                   # fps for updating variance.
+    update_pose_fps: 15.0                       # fps for updating pose and shift the center of map.
     time_interval: 0.1                          # Time layer is updated with this interval.
-    map_acquire_fps: 10.0                       # Raw map is fetched from GPU memory in this fps.
+    map_acquire_fps: 50.0                       # Raw map is fetched from GPU memory in this fps.
     publish_statistics_fps: 2.0                 # Publish statistics topic in this fps.
     recordable_fps: 10.0                        # Recordable fps for pointcloud.
 
     #### Visibility cleanup / ray tracing 
-    max_ray_length: 5.0                         # maximum length for ray tracing. (limits occlusion cleanup range)
-    cleanup_step: 0.06                          # subtitute this value from validity layer at visibiltiy cleanup. (stronger clearing if larger)
-    cleanup_cos_thresh: 0.9                     # subtitute this value from validity layer at visibiltiy cleanup. (angular gating for clearing)
+    max_ray_length: 9.0                         # maximum length for ray tracing. (limits occlusion cleanup range)
+    cleanup_step: 0.08                         # subtitute this value from validity layer at visibiltiy cleanup. (stronger clearing if larger)
+    cleanup_cos_thresh: 0.6                    # subtitute this value from validity layer at visibiltiy cleanup. (angular gating for clearing)
 
     #### Drift compensation (uses stable, traversable cells) 
-    enable_drift_compensation: False
-    drift_compensation_variance_inler: 0.05     # cells under this value is used for drift compensation.
-    max_drift: 0.1                              # drift compensation happens only the drift is smaller than this value 
-    drift_compensation_alpha: 0.1               # drift compensation alpha for smoother update of drift compensation
-    min_height_drift_cnt: 100                   # drift compensation only happens if the valid cells are more than this number.
-    position_noise_thresh: 0.01                 # if the position change is bigger than this value, the drift compensation happens.
-    orientation_noise_thresh: 0.01              # if the orientation change is bigger than this value, the drift compensation happens.
-    position_lowpass_alpha: 0.2                 # lowpass filter alpha used for detecting movements.
-    orientation_lowpass_alpha: 0.2              # lowpass filter alpha used for detecting movements.
+    enable_drift_compensation: true
+    drift_compensation_variance_inlier: 0.06     # cells under this value is used for drift compensation.
+    max_drift: 0.08                                # drift compensation happens only the drift is smaller than this value 
+    drift_compensation_alpha: 0.08               # drift compensation alpha for smoother update of drift compensation
+    min_height_drift_cnt: 150                   # drift compensation only happens if the valid cells are more than this number.
+    position_noise_thresh: 0.008                  # if the position change is bigger than this value, the drift compensation happens.
+    orientation_noise_thresh: 0.008               # if the orientation change is bigger than this value, the drift compensation happens.
+    position_lowpass_alpha: 0.15                 # lowpass filter alpha used for detecting movements.
+    orientation_lowpass_alpha: 0.15              # lowpass filter alpha used for detecting movements.
     traversability_inlier: 0.9                  # cells with higher traversability are used for drift compensation.
 
     #### Safety / traversability layers 
@@ -70,7 +72,7 @@ elevation_mapping_node:
     overlap_clear_range_z: 2.0                  # z range [m] for clearing overlapped area. cells outside this range will be cleared. (used for multi floor setting)
 
     #### Feature toggles 
-    enable_edge_sharpen: False
+    enable_edge_sharpen: true
     enable_visibility_cleanup: true
     enable_overlap_clearance: False
     enable_pointcloud_publishing: True
