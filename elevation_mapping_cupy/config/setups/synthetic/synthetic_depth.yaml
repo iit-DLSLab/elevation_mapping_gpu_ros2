@@ -1,0 +1,20 @@
+/elevation_mapping_node:
+  ros__parameters:
+    # Frames (must match the synthetic publisher)
+    map_frame: "map"
+    base_frame: "base_link"
+    corrected_map_frame: "map"
+
+    # One deterministic pointcloud input (no image/semantic fusion in the supported surface).
+    subscribers:
+      depth:
+        topic_name: "/camera/depth/points"
+        data_type: "pointcloud"
+
+    # Single output topic for RViz + tests.
+    publishers:
+      elevation_map:
+        layers: ["elevation", "variance", "traversability"]
+        basic_layers: ["elevation"]
+        fps: 10.0
+

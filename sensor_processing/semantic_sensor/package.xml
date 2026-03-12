@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<package format="3">
+    <name>semantic_sensor</name>
+    <version>2.1.0</version>
+    <description>Semantic image and semantic pointcloud publishers for elevation_mapping_cupy.</description>
+    <maintainer email="lorenzoterenzi96@gmail.com">Lorenzo Terenzi</maintainer>
+
+    <license>MIT</license>
+
+    <url type="website">https://github.com/leggedrobotics/elevation_mapping_semantic_cupy</url>
+
+    <buildtool_depend>ament_python</buildtool_depend>
+    <depend>ament_index_python</depend>
+    <depend>cupy-cuda12x</depend>
+    <depend>cv_bridge</depend>
+    <depend>elevation_map_msgs</depend>
+    <depend>message_filters</depend>
+    <depend>rclpy</depend>
+    <depend>ros2_numpy</depend>
+    <depend>tf2_ros</depend>
+    <depend>sensor_msgs</depend>
+    <depend>std_msgs</depend>
+    <depend>geometry_msgs</depend>
+    <depend>simple-parsing</depend>
+    <exec_depend>launch</exec_depend>
+    <exec_depend>launch_ros</exec_depend>
+    <exec_depend>python3-torch</exec_depend>
+    <exec_depend>python3-torchvision</exec_depend>
+
+    <exec_depend>python3</exec_depend>
+    <exec_depend>python3-opencv</exec_depend>
+    <exec_depend>python3-sklearn</exec_depend>
+    <exec_depend>python3-yaml</exec_depend>
+
+    <export>
+        <build_type>ament_python</build_type>
+    </export>
+</package>

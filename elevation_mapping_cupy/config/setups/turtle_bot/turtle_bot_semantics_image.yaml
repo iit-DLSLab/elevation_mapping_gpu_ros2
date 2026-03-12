@@ -1,0 +1,38 @@
+/elevation_mapping_node:
+  ros__parameters:
+    #### Plugins ########
+    plugin_config_file: '$(find-pkg-share elevation_mapping_cupy)/config/setups/turtle_bot/plugin_config.yaml'
+
+    pointcloud_channel_fusions:
+      none: 'none'
+
+    image_channel_fusions:
+      rgb: 'color'
+      default: 'exponential'
+
+    #### Subscribers ########
+    subscribers:
+      color_cam:
+        topic_name: '/camera/rgb/image_raw'
+        camera_info_topic_name: '/camera/depth/camera_info'
+        channels: ['rgb']
+        data_type: image
+      semantic_cam:
+        topic_name: '/front_cam/semantic_image'
+        camera_info_topic_name: '/front_cam/camera/depth/camera_info_resized'
+        channel_info_topic_name: '/front_cam/channel_info'
+        channels: ['chair', 'sofa', 'person']
+        data_type: image
+      front_cam_pointcloud:
+        topic_name: '/camera/depth/points'
+        data_type: pointcloud
+    #### Publishers ########
+    publishers:
+      elevation_map_raw:
+        layers: ['elevation', 'traversability', 'variance', 'rgb', 'max_categories']
+        basic_layers: ['elevation']
+        fps: 5.0
+      elevation_map_filter:
+        layers: ['min_filter', 'smooth', 'inpaint', 'elevation', 'rgb', 'max_categories']
+        basic_layers: ['min_filter']
+        fps: 3.0

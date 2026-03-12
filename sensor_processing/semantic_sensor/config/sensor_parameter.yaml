@@ -1,0 +1,30 @@
+front_cam_pointcloud:
+  channels: ["rgb", "chair", "sofa", "person"]
+  fusion: ["color", "class_average", "class_average", "class_average"]
+  topic_name: "semantic_pointcloud"
+  semantic_segmentation: True
+  publish_segmentation_image: True
+  segmentation_model: "lraspp_mobilenet_v3_large"
+  show_label_legend: False
+
+  cam_info_topic: "/camera/depth/camera_info"
+  image_topic: "/camera/rgb/image_raw"
+  depth_topic: "/camera/depth/image_raw"
+  cam_frame: "camera_rgb_optical_frame"
+
+front_cam_image:
+  channels: ["chair", "sofa", "person"]
+  publish_topic: "semantic_image"
+  publish_image_topic: "semantic_image_debug"
+  channel_info_topic: "channel_info"
+  feature_topic: "semantic_seg_feat"
+  feat_image_topic: "semantic_seg_feat_im"
+  feat_channel_info_topic: "feat_channel_info"
+
+  semantic_segmentation: True
+  feature_extractor: False
+  segmentation_model: "lraspp_mobilenet_v3_large"
+  show_label_legend: False
+  image_topic: "/camera/rgb/image_raw"
+  camera_info_topic: "/camera/depth/camera_info"
+  resize: 0.5

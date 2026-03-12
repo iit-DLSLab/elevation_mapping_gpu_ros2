@@ -1,0 +1,63 @@
+<?xml version="1.0"?>
+<package format="3">
+    <name>elevation_mapping_cupy</name>
+    <version>2.1.0</version>
+    <description>Elevation mapping on GPU</description>
+    <maintainer email="takahiro.miki1992@gmail.com">Takahiro Miki</maintainer>
+    <maintainer email="lorenzoterenzi96@gmail.com">Lorenzo Terenzi</maintainer>
+    <license>MIT</license>
+
+    <buildtool_depend>ament_cmake</buildtool_depend>
+    <buildtool_depend>ament_cmake_python</buildtool_depend>
+
+    <!-- Core ROS2 dependencies -->
+    <depend>rclpy</depend>
+    <depend>std_msgs</depend>
+    <depend>message_filters</depend>
+    <depend>sensor_msgs</depend>
+    <depend>sensor_msgs_py</depend>
+    <depend>geometry_msgs</depend>
+    <depend>elevation_map_msgs</depend>
+    <depend>grid_map_msgs</depend>
+    <depend>python3-scipy</depend>
+    <depend>python3-numpy</depend>
+    <depend>tf2_ros</depend>
+    <depend>cv_bridge</depend>
+    <depend>ros2_numpy</depend>
+    <depend>ament_index_python</depend>
+    <depend>tf_transformations</depend>
+    <exec_depend>semantic_sensor</exec_depend>
+
+
+    <!-- Additional dependencies -->
+    <depend>rviz2</depend>
+    <depend>grid_map_rviz_plugin</depend>
+    <!-- <depend>gazebo_ros</depend> -->
+    <depend>python3-opencv</depend>
+    <depend>rosbag2_py</depend>
+    <depend>python3-shapely</depend>
+    <depend>python3-ruamel.yaml</depend>
+
+    <!-- Only used for semantic sensors I think -->
+    <!-- <depend>python3-sklearn</depend> -->
+    
+    <!-- Export dependencies -->
+    <!-- <build_export_depend>ament_cmake_python</build_export_depend> -->
+    <!-- <exec_depend>ament_cmake_python</exec_depend> -->
+
+    <test_depend>ament_cmake_pytest</test_depend>
+    <test_depend>ament_lint_auto</test_depend>
+    <test_depend>ament_lint_common</test_depend>
+    <test_depend>launch_testing</test_depend>
+    <test_depend>launch_testing_ament_cmake</test_depend>
+    <test_depend>launch_testing_ros</test_depend>
+    <test_depend>python3-pytest</test_depend>
+
+    <export>
+        <!-- Comment out to build only with python -->
+        <build_type>ament_cmake</build_type>
+        <!-- Comment in to build only with python -->
+        <!-- <build_type>ament_python</build_type> -->
+    </export>
+
+</package>

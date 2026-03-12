@@ -1,0 +1,4 @@
+numpy<2.0.0
+sphinx
+sphinx-rtd-theme
+sphinx-copybutton

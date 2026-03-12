@@ -1,0 +1,7 @@
+# Minimal Python deps for native (non-Docker) usage on ROS 2 Jazzy / Ubuntu 24.04.
+# Prefer `rosdep install` for ROS/system deps; this file is only for pip-only extras.
+#
+# For CUDA torch wheels, follow the official PyTorch instructions (varies by CUDA/driver).
+simple-parsing
+cupy-cuda12x
+torch

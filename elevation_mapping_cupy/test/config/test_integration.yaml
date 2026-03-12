@@ -1,0 +1,101 @@
+# Minimal configuration for integration testing
+# Tests TF → map shift → GridMap pipeline
+/elevation_mapping_node:
+  ros__parameters:
+    # Small map for fast testing
+    resolution: 0.1                    # 10cm resolution
+    map_length: 4.0                    # 4m x 4m map (40x40 cells)
+
+    # Frame configuration
+    map_frame: 'map'
+    base_frame: 'base_link'
+    corrected_map_frame: 'map'
+
+    # Fast update rates for responsive testing
+    update_variance_fps: 10.0
+    update_pose_fps: 10.0
+    time_interval: 0.1
+    map_acquire_fps: 10.0
+    publish_statistics_fps: 1.0
+    recordable_fps: 3.0
+
+    # Minimal filtering - we want raw data for testing
+    sensor_noise_factor: 0.01
+    mahalanobis_thresh: 10.0           # Accept most points
+    min_valid_distance: 0.0            # Accept all distances
+    max_height_range: 100.0            # Accept all heights
+
+    # Disable features that complicate testing
+    enable_edge_sharpen: false
+    enable_visibility_cleanup: false
+    enable_drift_compensation: false
+    enable_overlap_clearance: false
+    enable_pointcloud_publishing: false
+    enable_drift_corrected_TF_publishing: false
+    enable_normal_arrow_publishing: false
+
+    # Services / bags (used by save_map + load_map integration tests)
+    masked_replace_service_mask_layer_name: 'mask'
+    save_map_default_topic: 'elevation_map'
+    save_map_storage_id: 'mcap'
+    service_namespace: '/elevation_mapping_cupy'
+
+    # Basic variance settings
+    initial_variance: 10.0
+    initialized_variance: 10.0
+    max_variance: 100.0
+    time_variance: 0.0001
+    outlier_variance: 0.01
+
+    # Other required parameters
+    drift_compensation_variance_inlier: 0.1
+    checker_layer: 'elevation'
+    max_drift: 0.1
+    drift_compensation_alpha: 0.1
+    traversability_inlier: 0.9
+    dilation_size: 3
+    wall_num_thresh: 20
+    min_height_drift_cnt: 100
+    position_noise_thresh: 0.01
+    orientation_noise_thresh: 0.01
+    position_lowpass_alpha: 0.2
+    orientation_lowpass_alpha: 0.2
+    ramped_height_range_a: 0.3
+    ramped_height_range_b: 1.0
+    ramped_height_range_c: 0.2
+    max_ray_length: 10.0
+    cleanup_step: 0.1
+    cleanup_cos_thresh: 0.1
+    safe_thresh: 0.7
+    safe_min_thresh: 0.4
+    max_unsafe_n: 10
+    overlap_clear_range_xy: 4.0
+    overlap_clear_range_z: 2.0
+
+    use_chainer: false
+
+    # Upper bound
+    use_only_above_for_upper_bound: false
+
+    # Initializer - disabled for cleaner test
+    use_initializer_at_start: false
+    initialize_method: 'linear'
+    initialize_frame_id: ['base_link']
+    initialize_tf_offset: [0.0]
+    dilation_size_initialize: 2
+    initialize_tf_grid_size: 1.0
+
+    # plugin_config_file / weight_file are resolved internally by the node (package share).
+
+    # Single pointcloud subscriber
+    subscribers:
+      test_sensor:
+        topic_name: '/test_pointcloud'
+        data_type: pointcloud
+
+    # Single publisher for testing
+    publishers:
+      elevation_map:
+        layers: ['elevation']
+        basic_layers: ['elevation']
+        fps: 10.0

@@ -1,0 +1,100 @@
+name: ROS2 CI
+
+on:
+  push:
+    branches: [ros2]
+  pull_request:
+    branches: [ros2]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  ros2-test:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, linux, x64, moleworks-docker]
+    timeout-minutes: 90
+    env:
+      CI_TEST_IMAGE: rslheap/moleworks_ros@sha256:2bef0b5f33c844b6851a06027a1e8f05aae07d36e6962f8d93d129d7d2646963
+      TORCHVISION_VERSION: "0.25.0"
+      PYTORCH_EXTRA_INDEX_URL: https://download.pytorch.org/whl/cu128
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set run-scoped workspace
+        run: |
+          set -euo pipefail
+          CI_TEMP_ROOT="${RUNNER_TEMP:-/tmp}"
+          CI_WORKSPACE="${CI_TEMP_ROOT}/elevation_mapping_cupy-ci-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          echo "CI_TEMP_ROOT=${CI_TEMP_ROOT}" >> "${GITHUB_ENV}"
+          echo "CI_WORKSPACE=${CI_WORKSPACE}" >> "${GITHUB_ENV}"
+
+      - name: Disk usage before Docker operations
+        run: |
+          set -euo pipefail
+          df -h || true
+          docker system df || true
+
+      - name: Install host tools
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y rsync
+          sudo apt-get install -y python3-vcstool || {
+            sudo apt-get install -y python3-pip
+            python3 -m pip install --upgrade pip
+            echo "${HOME}/.local/bin" >> "${GITHUB_PATH}"
+            pip3 install --user vcstool
+          }
+
+      - name: Prepare workspace and import public deps
+        run: |
+          set -euo pipefail
+          mkdir -p "${CI_WORKSPACE}/src"
+          rsync -a --exclude '.git' ./ "${CI_WORKSPACE}/src/elevation_mapping_cupy/"
+          cd "${CI_WORKSPACE}/src"
+          vcs import --recursive < elevation_mapping_cupy/docker/src.repos
+
+      - name: Pull test image
+        run: docker pull "${CI_TEST_IMAGE}"
+
+      - name: Build and test in GPU container
+        run: |
+          set -euo pipefail
+          docker run --rm --gpus all \
+            -e TORCHVISION_VERSION \
+            -e PYTORCH_EXTRA_INDEX_URL \
+            -v "${CI_WORKSPACE}/src:/workspaces/elevation_mapping_ws/src" \
+            -w /workspaces/elevation_mapping_ws \
+            "${CI_TEST_IMAGE}" \
+            bash -lc 'bash src/elevation_mapping_cupy/scripts/ci/run_ros2_ci.sh'
+
+      - name: Disk usage summary
+        if: always()
+        run: |
+          set -euo pipefail
+          df -h || true
+          docker system df || true
+
+      - name: Cleanup run-scoped workspace
+        if: always()
+        run: |
+          set -euo pipefail
+          if [ -z "${CI_WORKSPACE:-}" ] || [ -z "${CI_TEMP_ROOT:-}" ]; then
+            echo "Missing CI_WORKSPACE or CI_TEMP_ROOT" >&2
+            exit 1
+          fi
+          case "${CI_WORKSPACE}" in
+            "${CI_TEMP_ROOT}"/*) ;;
+            *)
+              echo "Refusing to delete unexpected path: ${CI_WORKSPACE}" >&2
+              exit 1
+              ;;
+          esac
+          sudo rm -rf "${CI_WORKSPACE}"
