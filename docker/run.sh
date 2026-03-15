@@ -1,49 +1,42 @@
-#!/bin/bash
-IMAGE_NAME="elevation_mapping_cupy:jazzy"
+#!/usr/bin/env bash
+set -euo pipefail
 
-# Define environment variables for enabling graphical output for the container.
+IMAGE_NAME="elevation_dev_new:latest"
+HOST_WORKSPACE="/home/saeed/colcon_ws"
+
+ROBOT_CONFIG_REL="${ROBOT_CONFIG_REL:-menzi/base.yaml}"
+
+# 2. X11 / Display Setup for GUI (Rviz)
 XSOCK=/tmp/.X11-unix
 XAUTH=/tmp/.docker.xauth
-if [ ! -f $XAUTH ]
-then
+if [ ! -f $XAUTH ]; then
     touch $XAUTH
-    xauth_list=$(xauth nlist :0 | sed -e 's/^..../ffff/')
     xauth nlist $DISPLAY | sed -e 's/^..../ffff/' | xauth -f $XAUTH nmerge -
     chmod a+r $XAUTH
 fi
 
-#==
-# Launch container
-#==
+echo "-------------------------------------------------------"
+echo "Launching Elevation Mapping Development Environment"
+echo "Robot Config: $ROBOT_CONFIG_REL"
+echo "-------------------------------------------------------"
 
-# Create symlinks to user configs within the build context.
-mkdir -p .etc && cd .etc
-ln -sf /etc/passwd .
-ln -sf /etc/shadow .
-ln -sf /etc/group .
-cd ..
-
-# Launch a container from the prebuilt image.
-echo "---------------------"
-RUN_COMMAND="docker run \
+# 3. The Run Command
+# --rm: automatically clean up the container when you exit
+# -it: interactive terminal
+docker run --rm -it \
+  --name elevation_dev_container \
+  --privileged \
+  --network host \
+  --ipc host \
+  --gpus all \
+  --env="DISPLAY=$DISPLAY" \
+  --env="XAUTHORITY=$XAUTH" \
+  --env="QT_X11_NO_MITSHM=1" \
+  --env="RMW_IMPLEMENTATION=rmw_fastrtps_cpp" \
   --volume=$XSOCK:$XSOCK:rw \
   --volume=$XAUTH:$XAUTH:rw \
-  --env="QT_X11_NO_MITSHM=1" \
-  --env="XAUTHORITY=$XAUTH" \
-  --env="DISPLAY=$DISPLAY" \
-  --ulimit rtprio=99 \
-  --cap-add=sys_nice \
-  --privileged \
-  --net=host \
-  -eHOST_USERNAME=$(whoami) \
-  -v$HOME:$HOME \
-  -v$(pwd)/.etc/shadow:/etc/shadow \
-  -v$(pwd)/.etc/passwd:/etc/passwd \
-  -v$(pwd)/.etc/group:/etc/group \
-  -v/media:/media \
-  --gpus all \
-  -it $IMAGE_NAME"
-echo -e "[run.sh]: \e[1;32mThe final run command is\n\e[0;35m$RUN_COMMAND\e[0m."
-$RUN_COMMAND
-echo -e "[run.sh]: \e[1;32mDocker terminal closed.\e[0m"
-#   --entrypoint=$ENTRYPOINT \
+  --user ros \
+  -v "${HOST_WORKSPACE}:/home/ros/colcon_ws" \
+  "$IMAGE_NAME" \
+  bash -c "source /home/ros/colcon_ws/install/setup.bash 2>/dev/null || true; \
+           exec bash"

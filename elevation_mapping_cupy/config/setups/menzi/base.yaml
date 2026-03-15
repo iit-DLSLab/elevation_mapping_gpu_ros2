@@ -1,16 +1,40 @@
 /elevation_mapping_node:
   ros__parameters:
     subscribers:
-      front_cam:
-        topic_name: '/ouster_points_self_filtered'
+      animal_lidar:
+        topic_name: '/anymal/velodyne/points'
         data_type: pointcloud
+
+      livox_lidar:
+        topic_name: '/boxi/livox/points'
+        data_type: pointcloud
+
+      hesai_lidar:
+        topic_name: '/boxi/hesai/points'
+        data_type: pointcloud
+
+      # fussed_data:
+      #   topic_name: '/fused_cloud'
+      #   data_type: pointcloud
+
+      #   l1_lidar:
+      #     topic_name: '/unilidar/cloud'
+      #     data_type: pointcloud
+
+      # camera_lidar:
+      #     topic_name: '/realsense/front/camera/depth/color/points'
+      #     data_type: pointcloud
 
     publishers:
       elevation_map_raw:
-        layers: ['elevation', 'traversability', 'variance']
+        layers: ['elevation', 'traversability', 'variance','rgb']
         basic_layers: ['elevation']
-        fps: 5.0
+        fps: 30.0
+      elevation_map_recordable:
+        layers: ['elevation', 'traversability']
+        basic_layers: ['elevation', 'traversability']
+        fps: 2.0
       elevation_map_filter:
         layers: ['min_filter', 'smooth', 'inpaint', 'elevation']
         basic_layers: ['min_filter']
-        fps: 3.0
+        fps: 30.0
