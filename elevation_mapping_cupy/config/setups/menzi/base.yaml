@@ -1,11 +1,36 @@
 /elevation_mapping_node:
   ros__parameters:
     subscribers:
-      front_cam:
-        topic_name: '/ouster_points_self_filtered'
+    # ── Sensor Input (uncomment ONE section based on your sensor) ─────────────
+    
+      # Option 1 – Intel RealSense D435i (depth camera)
+      # realsense_camera:
+      #   topic_name: '/realsense/front/camera/depth/color/points'
+      #   data_type: pointcloud
+
+      # Option 2 – Unitree L1 LiDAR
+      l1_lidar:
+        topic_name: '/unilidar/cloud'
         data_type: pointcloud
 
+      # Option 3 – External point cloud merging package
+      # fused_data:
+      #   topic_name: '/fused_cloud'
+      #   data_type: pointcloud
+
+      # Option 4 – ARCHE GrandTour Dataset (multiple LiDARs)
+      # animal_lidar:
+      #   topic_name: '/anymal/velodyne/points'
+      #   data_type: pointcloud
+      # livox_lidar:
+      #   topic_name: '/boxi/livox/points'
+      #   data_type: pointcloud
+      # hesai_lidar:
+      #   topic_name: '/boxi/hesai/points'
+      #   data_type: pointcloud
+
     publishers:
+      # ── Map Output Layers ──────────────────────────────────────────────────────
       elevation_map_raw:
         layers: ['elevation', 'traversability', 'variance']
         basic_layers: ['elevation']
