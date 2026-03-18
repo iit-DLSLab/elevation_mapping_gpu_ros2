@@ -1,30 +1,31 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+# build.sh – build the elevation_mapping Docker image.
 
-echo "Checking system dependencies..."
-sudo apt-get update
-sudo apt-get install -y libcgal-dev
+set -euo pipefail
 
-cd /home/ros/colcon_ws
-source /opt/ros/$ROS_DISTRO/setup.bash
+IMAGE_NAME="${IMAGE_NAME:-elevation_mapping:latest}"
 
-BUILD_TYPE=RelWithDebInfo
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+DOCKERFILE="${SCRIPT_DIR}/Dockerfile.x64"
 
+echo "======================================================="
+echo " Building image : $IMAGE_NAME"
+echo " Dockerfile     : $DOCKERFILE"
+echo " Build context  : $REPO_ROOT"
+echo "======================================================="
 
-colcon build \
-    --packages-select \
-        elevation_mapping_cupy \
-        elevation_map_msgs \
-        convex_plane_decomposition \
-        convex_plane_decomposition_ros \
-        convex_plane_decomposition_msgs \
-        grid_map_filters_rsl \
-    --parallel-workers $(nproc) \
-    --merge-install \
-    --symlink-install \
-    --event-handlers console_cohesion+ \
-    --cmake-args \
-        -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
-        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-        -DBUILD_TESTING=OFF \
-        -DCMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined -Wall -Wextra -Wpedantic -Wshadow -Wno-error=shadow"
+DOCKER_BUILDKIT=1 docker build \
+    --file "$DOCKERFILE" \
+    --target runtime \
+    --tag "$IMAGE_NAME" \
+    --build-arg ROS_DISTRO=humble \
+    --build-arg USERNAME=ros \
+    --build-arg USER_UID="$(id -u)" \
+    --build-arg USER_GID="$(id -g)" \
+    --build-arg INSTALL_EMCUPY_ROSDEPS=true \
+    "$REPO_ROOT"
+
+echo ""
+echo "✓ Image '$IMAGE_NAME' built successfully."
+echo "  Run it with:  ./docker/run.sh"
