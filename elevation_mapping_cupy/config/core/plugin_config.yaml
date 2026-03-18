@@ -17,7 +17,7 @@ smooth_filter:
     input_layer_name: "min_filter"
 # Apply inpainting using opencv
 inpainting:
-  enable: True
+  enable: False
   fill_nan: False
   is_height_layer: True
   layer_name: "inpaint"
@@ -25,7 +25,7 @@ inpainting:
     method: "telea"                           # telea or ns
 # Apply smoothing for inpainted layer
 erosion:
-  enable: True
+  enable: False
   fill_nan: False
   is_height_layer: False
   layer_name: "erosion"
