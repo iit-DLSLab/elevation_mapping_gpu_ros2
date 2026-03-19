@@ -3,7 +3,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # Stage 1 – base: CUDA + ROS2 + locale/timezone
 # ─────────────────────────────────────────────────────────────────────────────
-FROM nvidia/cuda:13.2.0-cudnn-runtime-ubuntu22.04  AS base
+FROM nvidia/cuda:13.1.1-cudnn-runtime-ubuntu22.04  AS base
 
 LABEL description="ROS2 Humble + CUDA – elevation_mapping_cupy baked in"
 LABEL version="2.0"
