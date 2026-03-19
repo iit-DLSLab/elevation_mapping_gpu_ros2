@@ -9,9 +9,9 @@
       #   data_type: pointcloud
 
       # Option 2 – Unitree L1 LiDAR
-      l1_lidar:
-        topic_name: '/unilidar/cloud'
-        data_type: pointcloud
+      # l1_lidar:
+      #   topic_name: '/unilidar/cloud'
+      #   data_type: pointcloud
 
       # Option 3 – External point cloud merging package
       # fused_data:
@@ -19,15 +19,15 @@
       #   data_type: pointcloud
 
       # Option 4 – ARCHE GrandTour Dataset (multiple LiDARs)
-      # animal_lidar:
-      #   topic_name: '/anymal/velodyne/points'
-      #   data_type: pointcloud
-      # livox_lidar:
-      #   topic_name: '/boxi/livox/points'
-      #   data_type: pointcloud
-      # hesai_lidar:
-      #   topic_name: '/boxi/hesai/points'
-      #   data_type: pointcloud
+      animal_lidar:
+        topic_name: '/anymal/velodyne/points'
+        data_type: pointcloud
+      livox_lidar:
+        topic_name: '/boxi/livox/points'
+        data_type: pointcloud
+      hesai_lidar:
+        topic_name: '/boxi/hesai/points'
+        data_type: pointcloud
 
     publishers:
       # ── Map Output Layers ──────────────────────────────────────────────────────
