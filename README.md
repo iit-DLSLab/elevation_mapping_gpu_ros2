@@ -1,7 +1,5 @@
 # Elevation Mapping CuPy (ROS2)
 
-![ros2 ci](https://github.com/leggedrobotics/elevation_mapping_cupy/actions/workflows/jazzy-docker-tests.yml/badge.svg)
-
 - **Overview**
 - **Key Features**
 - **Requirements**
@@ -44,10 +42,12 @@ GPU-accelerated elevation mapping for robotic navigation and locomotion. This pa
 
 ## Requirements
 
-- **ROS2**: Jazzy (recommended)
-- **CUDA**: 12.x
-- **Python**: 3.10+
+- **OS**: Ubuntu 22.04 LTS (Jammy Jellyfish)
+- **ROS 2**: Humble
+- **CUDA**: 12.1+
+- **Python**: 3.10
 - **GPU**: NVIDIA GPU with CUDA support
+- **Docker**: 20.10+ with NVIDIA Container Toolkit
 
 ## Setup
 
