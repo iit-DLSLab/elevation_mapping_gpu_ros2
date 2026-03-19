@@ -1,80 +1,219 @@
 # syntax=docker/dockerfile:1.4
 
-# Jazzy targets Ubuntu 24.04. Use an NVIDIA CUDA base so CuPy + torch can use the GPU.
-FROM nvidia/cuda:12.6.3-cudnn-devel-ubuntu24.04
+# ─────────────────────────────────────────────────────────────────────────────
+# Stage 1 – base: CUDA + ROS2 + locale/timezone
+# ─────────────────────────────────────────────────────────────────────────────
+FROM nvidia/cuda:12.1.1-cudnn8-devel-ubuntu22.04 AS base
 
-ARG ROS_DISTRO=jazzy
-ARG USERNAME=ubuntu
+LABEL description="ROS2 Humble + CUDA – elevation_mapping_cupy baked in"
+LABEL version="2.0"
+
+ARG ROS_DISTRO=humble
+ARG USERNAME=ros
 ARG USER_UID=1000
-ARG USER_GID=$USER_UID
+ARG USER_GID=${USER_UID}
+ARG RMW_NAME=cyclonedds
+ARG INSTALL_EMCUPY_ROSDEPS=true
 
 ENV DEBIAN_FRONTEND=noninteractive \
     LANG=en_US.UTF-8 \
     LC_ALL=en_US.UTF-8 \
     TZ=UTC \
-    ROS_DISTRO=${ROS_DISTRO}
+    PYTHONUNBUFFERED=1 \
+    ROS_DISTRO=${ROS_DISTRO} \
+    ROS_ROOT=/opt/ros/${ROS_DISTRO} \
+    AMENT_PREFIX_PATH=/opt/ros/${ROS_DISTRO} \
+    COLCON_PREFIX_PATH=/opt/ros/${ROS_DISTRO} \
+    LD_LIBRARY_PATH=/opt/ros/${ROS_DISTRO}/lib:/usr/local/cuda/lib64 \
+    PATH=/opt/ros/${ROS_DISTRO}/bin:/usr/src/tensorrt/bin:/usr/local/cuda/bin:/home/${USERNAME}/.local/bin:$PATH \
+    PYTHONPATH=/opt/ros/${ROS_DISTRO}/lib/python3.10/site-packages:/home/${USERNAME}/.local/lib/python3.10/site-packages \
+    RMW_IMPLEMENTATION=rmw_${RMW_NAME}_cpp \
+    RMW_IMPLEMENTATION_DASH=rmw-${RMW_NAME}-cpp
 
+# ── Basic utilities ──────────────────────────────────────────────────────────
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    apt update && apt install -y --no-install-recommends \
-      locales tzdata \
-      curl gnupg2 lsb-release \
-      sudo git \
-      build-essential cmake \
-      python3-pip python3-venv \
+    apt-get update && apt-get install -y --no-install-recommends \
+        locales tzdata curl gnupg2 lsb-release sudo \
+        software-properties-common wget git git-lfs nano \
     && locale-gen en_US.UTF-8 \
-    && update-locale LC_ALL=${LC_ALL} LANG=${LANG} \
-    && rm -rf /var/lib/apt/lists/*
+    && update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8 \
+    && ln -fs /usr/share/zoneinfo/UTC /etc/localtime \
+    && dpkg-reconfigure -f noninteractive tzdata \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# ROS2 apt repo
+# ── ROS 2 Humble + CycloneDDS RMW ───────────────────────────────────────────
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
-      -o /usr/share/keyrings/ros-archive-keyring.gpg \
-    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" \
-      > /etc/apt/sources.list.d/ros2.list \
-    && apt update && apt install -y --no-install-recommends \
-      ros-${ROS_DISTRO}-ros-base \
-      ros-${ROS_DISTRO}-rviz2 \
-      ros-${ROS_DISTRO}-tf-transformations \
-      ros-${ROS_DISTRO}-grid-map-msgs \
-      ros-${ROS_DISTRO}-grid-map-rviz-plugin \
-      ros-${ROS_DISTRO}-pcl-ros \
-      ros-${ROS_DISTRO}-rosbag2-py \
-      ros-${ROS_DISTRO}-rosbag2-storage-mcap \
-      ros-${ROS_DISTRO}-ament-cmake \
-      ros-${ROS_DISTRO}-ament-cmake-python \
-      ros-${ROS_DISTRO}-ament-cmake-ros \
-      ros-${ROS_DISTRO}-launch-testing \
-      ros-${ROS_DISTRO}-launch-testing-ament-cmake \
-      python3-colcon-common-extensions \
-      python3-rosdep \
-      python3-vcstool \
-      python3-opencv \
-      python3-scipy \
-      python3-shapely \
-      python3-ruamel.yaml \
-    && rm -rf /var/lib/apt/lists/*
+        -o /usr/share/keyrings/ros-archive-keyring.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] \
+        http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" \
+        | tee /etc/apt/sources.list.d/ros2.list > /dev/null \
+    && apt-get update && apt-get install -y --no-install-recommends \
+        ros-${ROS_DISTRO}-ros-base \
+        python3-argcomplete \
+        # CycloneDDS – required by run.sh (RMW_IMPLEMENTATION=rmw_cyclonedds_cpp)
+        ros-${ROS_DISTRO}-rmw-cyclonedds-cpp \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Torch: traversability filter backend (CUDA). Use cu121 wheels (works on modern drivers).
-RUN python3 -m pip install --no-cache-dir --break-system-packages -U --extra-index-url https://download.pytorch.org/whl/cu121 \
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Stage 2 – dev: build tools + all Python / apt dependencies
+# ─────────────────────────────────────────────────────────────────────────────
+FROM base AS dev
+
+# ── Build & dev tools ────────────────────────────────────────────────────────
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    apt-get update && apt-get install -y --no-install-recommends \
+        bash-completion build-essential cmake gdb openssh-client \
+        python3-pip vim doxygen graphviz \
+        python3-sphinx python3-breathe \
+        ros-dev-tools \
+        ros-${ROS_DISTRO}-ament-* \
+        python3-rosdep \
+        libxine2-dev libtiff5-dev libpostproc-dev libopencv-dev \
+        libcgal-dev \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# ── PyTorch (CUDA 12.1 wheel) ────────────────────────────────────────────────
+RUN python3 -m pip install -U --extra-index-url https://download.pytorch.org/whl/cu121 \
     torch torchvision torchaudio
 
-RUN python3 -m pip install --no-cache-dir --break-system-packages \
-    cupy-cuda12x \
-    simple-parsing
+# ── General Python packages ──────────────────────────────────────────────────
+RUN python3 -m pip install \
+    colcon-clean rosdoc2 \
+    sphinx_rtd_theme sphinx-multiversion sphinx-copybutton sphinx-tabs \
+    autopep8 \
+    flake8-builtins flake8-comprehensions flake8-docstrings \
+    flake8-import-order flake8-class-newline flake8-blind-except flake8-quotes
 
-# Non-root user (so mounted workspaces behave).
-# NOTE: NVIDIA CUDA base images already ship with `ubuntu:1000:1000`.
-RUN if ! getent group ${USER_GID} >/dev/null; then groupadd --gid ${USER_GID} ${USERNAME}; fi \
-    && if ! id -u ${USERNAME} >/dev/null 2>&1; then useradd -m -s /bin/bash --uid ${USER_UID} --gid ${USER_GID} ${USERNAME}; fi \
+# ── elevation_mapping_cupy Python deps ──────────────────────────────────────
+RUN if [ "$INSTALL_EMCUPY_ROSDEPS" = "true" ]; then \
+        python3 -m pip install \
+            scikit-learn \
+            opencv-python \
+            cupy-cuda12x \
+            simple-parsing \
+            "numpy<2.0.0" \
+            # needed at runtime – no rosdep entry
+            ros2-numpy \
+            transforms3d scipy; \
+    fi
+
+# ── elevation_mapping_cupy apt deps ─────────────────────────────────────────
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    if [ "$INSTALL_EMCUPY_ROSDEPS" = "true" ]; then \
+        apt-get update && apt-get install -y --no-install-recommends \
+            libboost-all-dev \
+            ros-${ROS_DISTRO}-grid-map-msgs \
+            ros-${ROS_DISTRO}-grid-map-ros \
+            ros-${ROS_DISTRO}-grid-map-cv \
+            ros-${ROS_DISTRO}-grid-map-core \
+            ros-${ROS_DISTRO}-grid-map-demos \
+            ros-${ROS_DISTRO}-image-transport \
+            ros-${ROS_DISTRO}-pcl-ros \
+            ros-${ROS_DISTRO}-cv-bridge \
+            ros-${ROS_DISTRO}-tf-transformations \
+            ros-${ROS_DISTRO}-rviz2 \
+            ros-${ROS_DISTRO}-gazebo-ros \
+            ros-${ROS_DISTRO}-gazebo-ros-pkgs \
+            ros-${ROS_DISTRO}-point-cloud-transport \
+            ros-${ROS_DISTRO}-camera-calibration-parsers \
+            ros-${ROS_DISTRO}-camera-info-manager \
+            ros-${ROS_DISTRO}-gazebo-plugins \
+            ros-${ROS_DISTRO}-turtlebot3-msgs \
+            ros-${ROS_DISTRO}-turtlebot3-teleop \
+            python3-shapely python3-scipy python3-ruamel.yaml \
+        && apt-get clean && rm -rf /var/lib/apt/lists/*; \
+    fi
+
+# ── NVIDIA Container Toolkit ─────────────────────────────────────────────────
+RUN distribution=$(. /etc/os-release; echo $ID$VERSION_ID) \
+    && curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | apt-key add - \
+    && curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list \
+        | tee /etc/apt/sources.list.d/nvidia-docker.list \
+    && apt-get update && apt-get install -y nvidia-container-toolkit \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# ── Non-root user ────────────────────────────────────────────────────────────
+ARG USERNAME=ros
+ARG USER_UID=1000
+ARG USER_GID=${USER_UID}
+
+RUN groupadd --gid ${USER_GID} ${USERNAME} \
+    && useradd -s /bin/bash --uid ${USER_UID} --gid ${USER_GID} -m ${USERNAME} \
     && echo "${USERNAME} ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/${USERNAME} \
     && chmod 0440 /etc/sudoers.d/${USERNAME}
 
-RUN echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> /home/${USERNAME}/.bashrc
 
-# rosdep init must run once (as root) inside the image.
-RUN rosdep init || true
+# ─────────────────────────────────────────────────────────────────────────────
+# Stage 3 – builder: copy local sources & compile inside the image
+# ─────────────────────────────────────────────────────────────────────────────
+FROM dev AS builder
 
-WORKDIR /home/${USERNAME}/workspace
+ARG USERNAME=ros
+ARG ROS_DISTRO=humble
+
+# Internal workspace used only during build – never exposed as a mount
+ENV ROS_WS=/home/${USERNAME}/ros_ws
+
+# Initialise rosdep (must be done before rosdep update)
+RUN rosdep init
+
+# Copy the entire local repo (build context = repo root) into the image.
+RUN mkdir -p ${ROS_WS}/src
+COPY --chown=${USERNAME}:${USERNAME} . ${ROS_WS}/src/elevation_mapping_gpu_ros2/
+
+# Build – identical flags to the original build.sh but runs here, inside the image
+RUN --mount=type=cache,target=/root/.cache/pip \
+    bash -c "\
+        source /opt/ros/${ROS_DISTRO}/setup.bash && \
+        cd ${ROS_WS} && \
+        rosdep update --rosdistro ${ROS_DISTRO} && \
+        colcon build \
+            --parallel-workers \$(nproc) \
+            --merge-install \
+            --event-handlers console_cohesion+ \
+            --cmake-args \
+                -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+                -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+                -DBUILD_TESTING=OFF \
+                '-DCMAKE_CXX_FLAGS=-Wl,--allow-shlib-undefined -Wall -Wextra -Wpedantic -Wshadow -Wno-error=shadow' \
+    "
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Stage 4 – runtime: slim final image
+# ─────────────────────────────────────────────────────────────────────────────
+FROM dev AS runtime
+
+ARG USERNAME=ros
+ARG ROS_DISTRO=humble
+
+ENV ROS_WS=/home/${USERNAME}/ros_ws
+
+# Copy only the compiled install tree – no source, no build artefacts
+COPY --from=builder ${ROS_WS}/install ${ROS_WS}/install
+RUN chown -R ${USERNAME}:${USERNAME} ${ROS_WS}
+
+# ── Config mount-point ───────────────────────────────────────────────────────
+# The host bind-mount will overlay exactly this directory at runtime.
+
+# Adjust the destination to wherever elevation_mapping_cupy reads configs from.
+RUN mkdir -p ${ROS_WS}/install/share/elevation_mapping_cupy/config
+
+# ── Shell environment ────────────────────────────────────────────────────────
+RUN echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> /home/${USERNAME}/.bashrc \
+    && echo "source ${ROS_WS}/install/setup.bash" >> /home/${USERNAME}/.bashrc \
+    && echo "source /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash" >> /home/${USERNAME}/.bashrc \
+    && echo 'export PATH=$PATH:/home/${USERNAME}/.local/bin' >> /home/${USERNAME}/.bashrc \
+    && echo 'export PYTHONPATH=$PYTHONPATH:/home/${USERNAME}/.local/lib/python3.10/site-packages' >> /home/${USERNAME}/.bashrc
+
+ENV ROS_DOMAIN_ID=1 \
+    TURTLEBOT3_MODEL=waffle_realsense_depth
+
+WORKDIR ${ROS_WS}
 USER ${USERNAME}
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD ros2 topic list > /dev/null 2>&1 || exit 1
 
 CMD ["bash"]
