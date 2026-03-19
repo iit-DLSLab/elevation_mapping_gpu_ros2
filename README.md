@@ -263,7 +263,7 @@ In this setup, the plane segmentation node receives the raw elevation map output
 > 💡 Both `node.yaml` and `parameters.yaml` are mounted from the host at runtime, so they can be edited without rebuilding the Docker image.
 
 
-### Example 1 Full Elevation Mapping Pipeline with Unitree L1 LiDAR (Online)
+### Example 1 Elevation Mapping with Unitree L1 LiDAR (Online)
 
 This example walks through the complete pipeline for running the elevation map using:
 
