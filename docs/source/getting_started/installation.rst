@@ -45,7 +45,7 @@ Install ROS dependencies with ``rosdep``.
 
   cd ~/ros2_ws
   rosdep install --from-paths src --ignore-src --rosdistro jazzy -r -y \
-    --skip-keys "cupy-cuda13x numpy_lessthan_2 simple-parsing"
+    --skip-keys "cupy-cuda12x numpy_lessthan_2 simple-parsing"
 
 The package manifest deliberately depends on a CUDA-specific CuPy wheel and a
 ``numpy<2`` constraint. If your local ``rosdep`` database does not provide
@@ -54,7 +54,7 @@ those keys, install them directly with ``pip``:
 .. code-block:: bash
 
   python3 -m pip install --upgrade pip
-  python3 -m pip install "numpy<2.0.0" simple-parsing cupy-cuda13x
+  python3 -m pip install "numpy<2.0.0" simple-parsing cupy-cuda12x
 
 If you want to run the restored semantic demos, install a matching
 ``torchvision`` build for your local PyTorch/CUDA stack:

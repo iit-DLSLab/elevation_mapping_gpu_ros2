@@ -3,5 +3,5 @@
 #
 # For CUDA torch wheels, follow the official PyTorch instructions (varies by CUDA/driver).
 simple-parsing
-cupy-cuda13x
+cupy-cuda12x
 torch

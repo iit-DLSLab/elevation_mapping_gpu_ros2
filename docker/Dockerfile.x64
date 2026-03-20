@@ -3,7 +3,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # Stage 1 – base: CUDA + ROS2 + locale/timezone
 # ─────────────────────────────────────────────────────────────────────────────
-FROM nvidia/cuda:13.1.1-cudnn-runtime-ubuntu22.04  AS base
+FROM nvidia/cuda:12.6.3-cudnn-runtime-ubuntu22.04  AS base
 
 LABEL description="ROS2 Humble + CUDA – elevation_mapping_cupy baked in"
 LABEL version="2.0"
@@ -74,7 +74,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         libcgal-dev \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# ── PyTorch (latest official CUDA wheel line; no CUDA 13 wheel yet) ─────────
+# ── PyTorch (CUDA 12.6 wheel line) ───────────────────────────────────────────
 RUN python3 -m pip install -U --extra-index-url https://download.pytorch.org/whl/cu126 \
     torch torchvision torchaudio
 
@@ -91,7 +91,7 @@ RUN if [ "$INSTALL_EMCUPY_ROSDEPS" = "true" ]; then \
         python3 -m pip install \
             scikit-learn \
             opencv-python \
-            cupy-cuda13x \
+            cupy-cuda12x \
             simple-parsing \
             "numpy<2.0.0" \
             # needed at runtime – no rosdep entry
