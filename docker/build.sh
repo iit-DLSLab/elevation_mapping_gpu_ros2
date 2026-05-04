@@ -19,7 +19,8 @@ DOCKER_BUILDKIT=1 docker build \
     --file "$DOCKERFILE" \
     --target runtime \
     --tag "$IMAGE_NAME" \
-    --build-arg ROS_DISTRO=humble \
+    --build-arg ROS_DISTRO=jazzy \
+    --build-arg RMW_NAME=fastrtps \
     --build-arg USERNAME=ros \
     --build-arg USER_UID="$(id -u)" \
     --build-arg USER_GID="$(id -g)" \

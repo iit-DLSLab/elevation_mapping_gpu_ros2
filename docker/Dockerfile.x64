@@ -3,10 +3,14 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # Stage 1 – base: CUDA + ROS2 + locale/timezone
 # ─────────────────────────────────────────────────────────────────────────────
-#FROM nvidia/cuda:12.1.1-cudnn8-devel-ubuntu22.04 AS base
-FROM nvidia/cuda:12.8.1-cudnn-devel-ubuntu22.04 AS base
+ARG ROS_DISTRO=humble
 
-LABEL description="ROS2 Humble + CUDA – elevation_mapping_cupy baked in"
+# Keep the CUDA image aligned with the Ubuntu version required by the ROS distro.
+FROM nvidia/cuda:12.8.1-cudnn-devel-ubuntu22.04 AS humble_base
+FROM nvidia/cuda:12.8.1-cudnn-devel-ubuntu24.04 AS jazzy_base
+FROM ${ROS_DISTRO}_base AS base
+
+LABEL description="ROS2 + CUDA - elevation_mapping_cupy baked in"
 LABEL version="2.0"
 
 ARG ROS_DISTRO=humble
@@ -27,9 +31,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     COLCON_PREFIX_PATH=/opt/ros/${ROS_DISTRO} \
     LD_LIBRARY_PATH=/opt/ros/${ROS_DISTRO}/lib:/usr/local/cuda/lib64 \
     PATH=/opt/ros/${ROS_DISTRO}/bin:/usr/src/tensorrt/bin:/usr/local/cuda/bin:/home/${USERNAME}/.local/bin:$PATH \
-    PYTHONPATH=/opt/ros/${ROS_DISTRO}/lib/python3.10/site-packages:/home/${USERNAME}/.local/lib/python3.10/site-packages \
-    RMW_IMPLEMENTATION=rmw_${RMW_NAME}_cpp \
-    RMW_IMPLEMENTATION_DASH=rmw-${RMW_NAME}-cpp
+    RMW_IMPLEMENTATION=rmw_${RMW_NAME}_cpp
 
 # ── Basic utilities ──────────────────────────────────────────────────────────
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
@@ -42,18 +44,22 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     && dpkg-reconfigure -f noninteractive tzdata \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# ── ROS 2 Humble + CycloneDDS RMW ───────────────────────────────────────────
+# ── ROS 2 + selected RMW ────────────────────────────────────────────────────
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
+    . /etc/os-release \
+    && case "${ROS_DISTRO}:${VERSION_CODENAME}" in \
+        humble:jammy|jazzy:noble) ;; \
+        *) echo "Unsupported ROS/Ubuntu combination: ${ROS_DISTRO} on ${VERSION_CODENAME}" >&2; exit 1 ;; \
+    esac \
+    && curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
         -o /usr/share/keyrings/ros-archive-keyring.gpg \
     && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] \
-        http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" \
+        http://packages.ros.org/ros2/ubuntu ${VERSION_CODENAME} main" \
         | tee /etc/apt/sources.list.d/ros2.list > /dev/null \
     && apt-get update && apt-get install -y --no-install-recommends \
         ros-${ROS_DISTRO}-ros-base \
         python3-argcomplete \
-        # CycloneDDS – required by run.sh (RMW_IMPLEMENTATION=rmw_cyclonedds_cpp)
-        ros-${ROS_DISTRO}-rmw-cyclonedds-cpp \
+        ros-${ROS_DISTRO}-rmw-${RMW_NAME}-cpp \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 
@@ -143,7 +149,14 @@ ARG USER_GID=${USER_UID}
 RUN groupadd --gid ${USER_GID} ${USERNAME} \
     && useradd -s /bin/bash --uid ${USER_UID} --gid ${USER_GID} -m ${USERNAME} \
     && echo "${USERNAME} ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/${USERNAME} \
-    && chmod 0440 /etc/sudoers.d/${USERNAME}
+    && chmod 0440 /etc/sudoers.d/${USERNAME} \
+    && for bashrc in /home/${USERNAME}/.bashrc /etc/skel/.bashrc; do \
+        echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> "${bashrc}"; \
+        echo "source \${ROS_WS}/install/setup.bash" >> "${bashrc}"; \
+        echo "source /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash" >> "${bashrc}"; \
+        echo "export PATH=\$PATH:/home/${USERNAME}/.local/bin" >> "${bashrc}"; \
+        echo 'export PYTHONPATH=$PYTHONPATH:$(python3 -m site --user-site)' >> "${bashrc}"; \
+    done
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -202,11 +215,6 @@ RUN chown -R ${USERNAME}:${USERNAME} ${ROS_WS}
 RUN mkdir -p ${ROS_WS}/install/share/elevation_mapping_cupy/config
 
 # ── Shell environment ────────────────────────────────────────────────────────
-RUN echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> /home/${USERNAME}/.bashrc \
-    && echo "source ${ROS_WS}/install/setup.bash" >> /home/${USERNAME}/.bashrc \
-    && echo "source /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash" >> /home/${USERNAME}/.bashrc \
-    && echo 'export PATH=$PATH:/home/${USERNAME}/.local/bin' >> /home/${USERNAME}/.bashrc \
-    && echo 'export PYTHONPATH=$PYTHONPATH:/home/${USERNAME}/.local/lib/python3.10/site-packages' >> /home/${USERNAME}/.bashrc
 
 ENV ROS_DOMAIN_ID=1 \
     TURTLEBOT3_MODEL=waffle_realsense_depth
