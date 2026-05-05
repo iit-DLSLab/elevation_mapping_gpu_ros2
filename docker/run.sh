@@ -54,7 +54,7 @@ docker run --rm -it \
     --env DISPLAY="$DISPLAY" \
     --env XAUTHORITY="$XAUTH" \
     --env QT_X11_NO_MITSHM=1 \
-    --env RMW_IMPLEMENTATION=rmw_cyclonedds_cpp \
+    --env RMW_IMPLEMENTATION=rmw_fastrtps_cpp \
     --env ROS_DOMAIN_ID=1 \
     --env ROS_LOCALHOST_ONLY=0 \
     \
