@@ -83,8 +83,9 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         libcgal-dev \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Keep pip-managed tooling isolated from Debian/ROS Python packages.
-RUN python3 -m venv ${VIRTUAL_ENV} \
+# Keep pip-managed tooling isolated while still exposing Debian/ROS Python modules
+# that ROS entrypoints expect at runtime.
+RUN python3 -m venv --system-site-packages ${VIRTUAL_ENV} \
     && ${VIRTUAL_ENV}/bin/pip install -U --retries 10 --timeout 120 pip setuptools wheel
 
 # ── PyTorch (CUDA 12.8 wheel) ────────────────────────────────────────────────
@@ -106,8 +107,10 @@ RUN if [ "$INSTALL_EMCUPY_ROSDEPS" = "true" ]; then \
             'scikit-learn>=1.8.0' \
             'opencv-python>=4.13.0' \
             'cupy-cuda12x>=14.0.1' \
+            'ruamel.yaml>=0.18.0' \
             simple-parsing \
             "numpy>=2.0.0,<2.3.0" \
+            shapely \
             transforms3d \
             'scipy>=1.17.1'; \
     fi
