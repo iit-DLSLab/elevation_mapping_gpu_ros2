@@ -25,12 +25,13 @@ ENV DEBIAN_FRONTEND=noninteractive \
     LC_ALL=en_US.UTF-8 \
     TZ=UTC \
     PYTHONUNBUFFERED=1 \
+    VIRTUAL_ENV=/opt/venv \
     ROS_DISTRO=${ROS_DISTRO} \
     ROS_ROOT=/opt/ros/${ROS_DISTRO} \
     AMENT_PREFIX_PATH=/opt/ros/${ROS_DISTRO} \
     COLCON_PREFIX_PATH=/opt/ros/${ROS_DISTRO} \
     LD_LIBRARY_PATH=/opt/ros/${ROS_DISTRO}/lib:/usr/local/cuda/lib64 \
-    PATH=/opt/ros/${ROS_DISTRO}/bin:/usr/src/tensorrt/bin:/usr/local/cuda/bin:/home/${USERNAME}/.local/bin:$PATH \
+    PATH=/opt/venv/bin:/opt/ros/${ROS_DISTRO}/bin:/usr/src/tensorrt/bin:/usr/local/cuda/bin:/home/${USERNAME}/.local/bin:$PATH \
     RMW_IMPLEMENTATION=rmw_${RMW_NAME}_cpp
 
 # ── Basic utilities ──────────────────────────────────────────────────────────
@@ -72,22 +73,28 @@ FROM base AS dev
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     apt-get update && apt-get install -y --no-install-recommends \
         bash-completion build-essential cmake gdb openssh-client \
-        python3-pip vim doxygen graphviz \
+        python3-pip python3-venv vim doxygen graphviz \
         python3-sphinx python3-breathe \
         ros-dev-tools \
         ros-${ROS_DISTRO}-ament-* \
         python3-rosdep \
+        python3-vcstool \
         libxine2-dev libtiff5-dev libpostproc-dev libopencv-dev \
         libcgal-dev \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
+# Keep pip-managed tooling isolated from Debian/ROS Python packages.
+RUN python3 -m venv ${VIRTUAL_ENV} \
+    && ${VIRTUAL_ENV}/bin/pip install -U --retries 10 --timeout 120 pip setuptools wheel
+
 # ── PyTorch (CUDA 12.8 wheel) ────────────────────────────────────────────────
-RUN python3 -m pip install -U --extra-index-url https://download.pytorch.org/whl/cu128 \
+RUN ${VIRTUAL_ENV}/bin/pip install -U --retries 10 --timeout 120 --extra-index-url https://download.pytorch.org/whl/cu128 \
     torch torchvision torchaudio
 
 # ── General Python packages ──────────────────────────────────────────────────
-RUN python3 -m pip install \
+RUN ${VIRTUAL_ENV}/bin/pip install -U --retries 10 --timeout 120 \
     colcon-clean rosdoc2 \
+
     sphinx_rtd_theme sphinx-multiversion sphinx-copybutton sphinx-tabs \
     autopep8 \
     flake8-builtins flake8-comprehensions flake8-docstrings \
@@ -95,15 +102,14 @@ RUN python3 -m pip install \
 
 # ── elevation_mapping_cupy Python deps ──────────────────────────────────────
 RUN if [ "$INSTALL_EMCUPY_ROSDEPS" = "true" ]; then \
-        python3 -m pip install -U \
-            scikit-learn \
-            opencv-python \
-            cupy-cuda12x \
+        ${VIRTUAL_ENV}/bin/pip install --prefer-binary -U --retries 10 --timeout 120 \
+            'scikit-learn>=1.8.0' \
+            'opencv-python>=4.13.0' \
+            'cupy-cuda12x>=14.0.1' \
             simple-parsing \
-            "numpy<2.0.0" \
-            # needed at runtime – no rosdep entry
-            ros2-numpy \
-            transforms3d scipy; \
+            "numpy>=2.0.0,<2.3.0" \
+            transforms3d \
+            'scipy>=1.17.1'; \
     fi
 
 # ── elevation_mapping_cupy apt deps ─────────────────────────────────────────
@@ -121,15 +127,18 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
             ros-${ROS_DISTRO}-cv-bridge \
             ros-${ROS_DISTRO}-tf-transformations \
             ros-${ROS_DISTRO}-rviz2 \
-            ros-${ROS_DISTRO}-gazebo-ros \
-            ros-${ROS_DISTRO}-gazebo-ros-pkgs \
+            ros-${ROS_DISTRO}-ros-gz \
+            ros-${ROS_DISTRO}-ros-gz-bridge \
+            ros-${ROS_DISTRO}-ros-gz-sim \
             ros-${ROS_DISTRO}-point-cloud-transport \
             ros-${ROS_DISTRO}-camera-calibration-parsers \
             ros-${ROS_DISTRO}-camera-info-manager \
-            ros-${ROS_DISTRO}-gazebo-plugins \
             ros-${ROS_DISTRO}-turtlebot3-msgs \
             ros-${ROS_DISTRO}-turtlebot3-teleop \
             python3-shapely python3-scipy python3-ruamel.yaml \
+            python3-colcon-common-extensions \
+            python3-colcon-parallel-executor \
+            python3-colcon-output \
         && apt-get clean && rm -rf /var/lib/apt/lists/*; \
     fi
 
@@ -154,6 +163,7 @@ RUN groupadd --gid ${USER_GID} ${USERNAME} \
         echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> "${bashrc}"; \
         echo "source \${ROS_WS}/install/setup.bash" >> "${bashrc}"; \
         echo "source /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash" >> "${bashrc}"; \
+        echo "source ${VIRTUAL_ENV}/bin/activate" >> "${bashrc}"; \
         echo "export PATH=\$PATH:/home/${USERNAME}/.local/bin" >> "${bashrc}"; \
         echo 'export PYTHONPATH=$PYTHONPATH:$(python3 -m site --user-site)' >> "${bashrc}"; \
     done
@@ -177,17 +187,21 @@ RUN rosdep init
 RUN mkdir -p ${ROS_WS}/src
 COPY --chown=${USERNAME}:${USERNAME} . ${ROS_WS}/src/elevation_mapping_gpu_ros2/
 
-# Build – identical flags to the original build.sh but runs here, inside the image
+# Import external workspace dependencies referenced by src.repos
+RUN cd ${ROS_WS} && vcs import src < src/elevation_mapping_gpu_ros2/docker/src.repos
+
+# Build – use the system colcon so ROS/Ubuntu plugin discovery stays intact
 RUN --mount=type=cache,target=/root/.cache/pip \
     bash -c "\
         source /opt/ros/${ROS_DISTRO}/setup.bash && \
+        export PATH=/usr/bin:/bin:\$PATH && \
         cd ${ROS_WS} && \
         rosdep update --rosdistro ${ROS_DISTRO} && \
-        colcon build \
-            --parallel-workers \$(nproc) \
+        /usr/bin/colcon build \
             --merge-install \
-            --event-handlers console_cohesion+ \
+            --event-handlers=console_direct+ \
             --cmake-args \
+                -DPython3_EXECUTABLE=/usr/bin/python3 \
                 -DCMAKE_BUILD_TYPE=RelWithDebInfo \
                 -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
                 -DBUILD_TESTING=OFF \
