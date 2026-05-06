@@ -104,12 +104,12 @@ RUN ${VIRTUAL_ENV}/bin/pip install -U --retries 10 --timeout 120 \
 # ── elevation_mapping_cupy Python deps ──────────────────────────────────────
 RUN if [ "$INSTALL_EMCUPY_ROSDEPS" = "true" ]; then \
         ${VIRTUAL_ENV}/bin/pip install --prefer-binary -U --retries 10 --timeout 120 \
-            'scikit-learn>=1.8.0' \
-            'opencv-python>=4.13.0' \
-            'cupy-cuda12x>=14.0.1' \
+            'scikit-learn' \
+            'opencv-python' \
+            'cupy-cuda12x>=13.0,<14' \
             'ruamel.yaml>=0.18.0' \
             simple-parsing \
-            "numpy>=2.0.0,<2.3.0" \
+            "numpy>=1.24,<2" \
             shapely \
             transforms3d \
             'scipy>=1.17.1'; \
