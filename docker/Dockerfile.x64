@@ -3,7 +3,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # Stage 1 – base: CUDA + ROS2 + locale/timezone
 # ─────────────────────────────────────────────────────────────────────────────
-ARG ROS_DISTRO=humble
+ARG ROS_DISTRO=jazzy
 
 # Keep the CUDA image aligned with the Ubuntu version required by the ROS distro.
 FROM nvidia/cuda:12.8.1-cudnn-devel-ubuntu22.04 AS humble_base
@@ -13,7 +13,7 @@ FROM ${ROS_DISTRO}_base AS base
 LABEL description="ROS2 + CUDA - elevation_mapping_cupy baked in"
 LABEL version="2.0"
 
-ARG ROS_DISTRO=humble
+ARG ROS_DISTRO=jazzy
 ARG USERNAME=ros
 ARG USER_UID=1000
 ARG USER_GID=${USER_UID}
@@ -178,7 +178,7 @@ RUN groupadd --gid ${USER_GID} ${USERNAME} \
 FROM dev AS builder
 
 ARG USERNAME=ros
-ARG ROS_DISTRO=humble
+ARG ROS_DISTRO=jazzy
 
 # Internal workspace used only during build – never exposed as a mount
 ENV ROS_WS=/home/${USERNAME}/ros_ws
@@ -217,7 +217,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 FROM dev AS runtime
 
 ARG USERNAME=ros
-ARG ROS_DISTRO=humble
+ARG ROS_DISTRO=jazzy
 
 ENV ROS_WS=/home/${USERNAME}/ros_ws
 
