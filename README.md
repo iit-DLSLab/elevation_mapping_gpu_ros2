@@ -71,16 +71,25 @@ First, set the required permissions to execute the shell scripts:
 chmod +x docker/build.sh docker/run.sh
 ```
 
-Then, run the script to build the Docker image (this may take ~15–20 minutes):
+Then, run the script to build the Docker image (this may take ~15–20 minutes). By default, the image is built with FastDDS/FastRTPS:
 ```bash
 ./docker/build.sh
 ```
+
+To build the same image with CycloneDDS instead, set `RMW_NAME` when building:
+```bash
+RMW_NAME=cyclonedds ./docker/build.sh
+```
+
+Supported `RMW_NAME` values are `fastrtps`, `fastdds`, `fast`, `cyclonedds`, and `cyclone`. The build script normalizes these values and installs the matching ROS 2 RMW package in the image.
 
 ### 3. Run the Docker Container
 After building the image, you can instantiate it and start a container by running:
 ```bash
 ./docker/run.sh
 ```
+
+The run script does not override `RMW_IMPLEMENTATION`. It uses the RMW implementation baked into the Docker image during `docker/build.sh`, so rebuild the image with the desired `RMW_NAME` before running it.
 
 After running the container, you will be inside the Docker environment. A welcome message similar to the following will appear:
 

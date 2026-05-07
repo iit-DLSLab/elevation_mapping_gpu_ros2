@@ -7,6 +7,19 @@ IMAGE_NAME="${IMAGE_NAME:-elevation_mapping:latest}"
 ROS_DISTRO="${ROS_DISTRO:-jazzy}" # jazzy, humble
 RMW_NAME="${RMW_NAME:-fastrtps}" # fastrtps, cyclonedds
 
+case "$RMW_NAME" in
+    fast|fastdds|fastrtps)
+        RMW_NAME=fastrtps
+        ;;
+    cyclone|cyclonedds)
+        RMW_NAME=cyclonedds
+        ;;
+    *)
+        echo "ERROR: Invalid RMW_NAME='$RMW_NAME'. Use one of: fastrtps, fastdds, fast, cyclonedds, cyclone."
+        exit 1
+        ;;
+esac
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 DOCKERFILE="${SCRIPT_DIR}/Dockerfile.x64"
