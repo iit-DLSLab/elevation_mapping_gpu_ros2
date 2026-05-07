@@ -86,11 +86,12 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 # Keep pip-managed tooling isolated while still exposing Debian/ROS Python modules
 # that ROS entrypoints expect at runtime.
 RUN python3 -m venv --system-site-packages ${VIRTUAL_ENV} \
-    && ${VIRTUAL_ENV}/bin/pip install -U --retries 10 --timeout 120 pip setuptools wheel
+    && ${VIRTUAL_ENV}/bin/pip install -U --retries 10 --timeout 120 pip 'setuptools<80' wheel
 
 # ── PyTorch (CUDA 12.8 wheel) ────────────────────────────────────────────────
 RUN ${VIRTUAL_ENV}/bin/pip install -U --retries 10 --timeout 120 --extra-index-url https://download.pytorch.org/whl/cu128 \
-    torch torchvision torchaudio
+    torch torchvision torchaudio \
+    && ${VIRTUAL_ENV}/bin/pip install -U --retries 10 --timeout 120 'setuptools<80'
 
 # ── General Python packages ──────────────────────────────────────────────────
 RUN ${VIRTUAL_ENV}/bin/pip install -U --retries 10 --timeout 120 \
@@ -103,6 +104,11 @@ RUN ${VIRTUAL_ENV}/bin/pip install -U --retries 10 --timeout 120 \
 
 # ── elevation_mapping_cupy Python deps ──────────────────────────────────────
 RUN if [ "$INSTALL_EMCUPY_ROSDEPS" = "true" ]; then \
+        if [ "$ROS_DISTRO" = "humble" ]; then \
+            SCIPY_SPEC='scipy>=1.10,<1.16'; \
+        else \
+            SCIPY_SPEC='scipy>=1.17.1'; \
+        fi; \
         ${VIRTUAL_ENV}/bin/pip install --prefer-binary -U --retries 10 --timeout 120 \
             'scikit-learn' \
             'opencv-python' \
@@ -112,13 +118,14 @@ RUN if [ "$INSTALL_EMCUPY_ROSDEPS" = "true" ]; then \
             "numpy>=1.24,<2" \
             shapely \
             transforms3d \
-            'scipy>=1.17.1'; \
+            "${SCIPY_SPEC}"; \
     fi
 
 # ── elevation_mapping_cupy apt deps ─────────────────────────────────────────
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     if [ "$INSTALL_EMCUPY_ROSDEPS" = "true" ]; then \
-        apt-get update && apt-get install -y --no-install-recommends \
+        apt-get update \
+        && apt-get install -y --no-install-recommends \
             libboost-all-dev \
             ros-${ROS_DISTRO}-grid-map-msgs \
             ros-${ROS_DISTRO}-grid-map-ros \
@@ -130,9 +137,6 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
             ros-${ROS_DISTRO}-cv-bridge \
             ros-${ROS_DISTRO}-tf-transformations \
             ros-${ROS_DISTRO}-rviz2 \
-            ros-${ROS_DISTRO}-ros-gz \
-            ros-${ROS_DISTRO}-ros-gz-bridge \
-            ros-${ROS_DISTRO}-ros-gz-sim \
             ros-${ROS_DISTRO}-point-cloud-transport \
             ros-${ROS_DISTRO}-camera-calibration-parsers \
             ros-${ROS_DISTRO}-camera-info-manager \
@@ -142,6 +146,36 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
             python3-colcon-common-extensions \
             python3-colcon-parallel-executor \
             python3-colcon-output \
+        && pick_first_pkg() { \
+            for pkg in "$@"; do \
+                if apt-get install -s --no-install-recommends "$pkg" > /dev/null 2>&1; then \
+                    apt-get install -y --no-install-recommends "$pkg"; \
+                    return 0; \
+                fi; \
+            done; \
+            echo "None of these packages exist for ${ROS_DISTRO}: $*" >&2; \
+            exit 1; \
+        } \
+        && install_if_exists() { \
+            pkg="$1"; \
+            if apt-get install -s --no-install-recommends "$pkg" > /dev/null 2>&1; then \
+                apt-get install -y --no-install-recommends "$pkg"; \
+            else \
+                echo "Skipping unavailable package: $pkg"; \
+            fi; \
+        } \
+        && pick_first_pkg \
+            ros-${ROS_DISTRO}-ros-gz \
+            ros-${ROS_DISTRO}-ros-ign \
+        && pick_first_pkg \
+            ros-${ROS_DISTRO}-ros-gz-bridge \
+            ros-${ROS_DISTRO}-ros-ign-bridge \
+        && pick_first_pkg \
+            ros-${ROS_DISTRO}-ros-gz-sim \
+            ros-${ROS_DISTRO}-ros-ign-gazebo \
+        && install_if_exists ros-${ROS_DISTRO}-gazebo-ros-pkgs \
+        && install_if_exists ros-${ROS_DISTRO}-turtlebot3-gazebo \
+        && install_if_exists ros-${ROS_DISTRO}-turtlebot3-description \
         && apt-get clean && rm -rf /var/lib/apt/lists/*; \
     fi
 
