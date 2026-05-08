@@ -42,8 +42,7 @@ GPU-accelerated elevation mapping for robotic navigation and locomotion. This pa
 
 ## Requirements
 
-- **OS**: Ubuntu 22.04 LTS (Jammy Jellyfish)
-- **ROS 2**: Humble
+- **ROS 2**: Humble/Jazzy
 - **CUDA**: 12.1+
 - **Python**: 3.10
 - **GPU**: NVIDIA GPU with CUDA support
