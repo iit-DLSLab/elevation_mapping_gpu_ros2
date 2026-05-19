@@ -22,12 +22,17 @@ ARG USER_UID=1000
 ARG USER_GID=${USER_UID}
 ARG RMW_NAME=cyclonedds
 ARG INSTALL_EMCUPY_ROSDEPS=true
+ARG TORCH_INSTALL_INDEX_URL=https://pypi.org/simple
+ARG TORCH_INSTALL_EXTRA_INDEX_URL=https://pypi.jetson-ai-lab.dev/jp6/cu126
 
 ENV DEBIAN_FRONTEND=noninteractive \
     LANG=en_US.UTF-8 \
     LC_ALL=en_US.UTF-8 \
     TZ=UTC \
     PYTHONUNBUFFERED=1 \
+    PIP_INDEX_URL=https://pypi.org/simple \
+    PIP_EXTRA_INDEX_URL= \
+    PIP_CONFIG_FILE=/dev/null \
     VIRTUAL_ENV=/opt/venv \
     ROS_DISTRO=${ROS_DISTRO} \
     ROS_ROOT=/opt/ros/${ROS_DISTRO} \
@@ -51,15 +56,15 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 
 # ── ROS 2 + selected RMW ────────────────────────────────────────────────────
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    . /etc/os-release \
-    && case "${ROS_DISTRO}:${VERSION_CODENAME}" in \
-        humble:jammy|jazzy:noble) ;; \
-        *) echo "Unsupported ROS/Ubuntu combination for Orin: ${ROS_DISTRO} on ${VERSION_CODENAME}" >&2; exit 1 ;; \
+    case "${ROS_DISTRO}" in \
+        humble) UBUNTU_CODENAME=jammy ;; \
+        jazzy) UBUNTU_CODENAME=noble ;; \
+        *) echo "Unsupported ROS distro for Orin: ${ROS_DISTRO}" >&2; exit 1 ;; \
     esac \
     && curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
         -o /usr/share/keyrings/ros-archive-keyring.gpg \
     && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] \
-        http://packages.ros.org/ros2/ubuntu ${VERSION_CODENAME} main" \
+        http://packages.ros.org/ros2/ubuntu ${UBUNTU_CODENAME} main" \
         | tee /etc/apt/sources.list.d/ros2.list > /dev/null \
     && apt-get update && apt-get install -y --no-install-recommends \
         ros-${ROS_DISTRO}-ros-base \
@@ -94,15 +99,18 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 # Keep pip-managed tooling isolated while still exposing Debian/ROS Python modules
 # that ROS entrypoints expect at runtime.
 RUN python3 -m venv --system-site-packages ${VIRTUAL_ENV} \
-    && ${VIRTUAL_ENV}/bin/pip install -U --retries 10 --timeout 120 pip 'setuptools<80' wheel
+    && ${VIRTUAL_ENV}/bin/pip install -U --retries 2 --timeout 120 \
+        pip 'setuptools<80' wheel
 
-# ── PyTorch (Jetson-friendly generic wheels) ─────────────────────────────────
-RUN ${VIRTUAL_ENV}/bin/pip install -U --retries 10 --timeout 120 \
-    torch torchvision \
-    && ${VIRTUAL_ENV}/bin/pip install -U --retries 10 --timeout 120 'setuptools<80'
+# ── PyTorch (Jetson wheels) ───────────────────────────────────────────────────
+RUN PIP_INDEX_URL=${TORCH_INSTALL_INDEX_URL} \
+    PIP_EXTRA_INDEX_URL=${TORCH_INSTALL_EXTRA_INDEX_URL} \
+    ${VIRTUAL_ENV}/bin/pip install -U --retries 2 --timeout 120 \
+        torch torchvision \
+    && ${VIRTUAL_ENV}/bin/pip install -U --retries 2 --timeout 120 'setuptools<80'
 
 # ── General Python packages ──────────────────────────────────────────────────
-RUN ${VIRTUAL_ENV}/bin/pip install -U --retries 10 --timeout 120 \
+RUN ${VIRTUAL_ENV}/bin/pip install -U --retries 2 --timeout 120 \
     colcon-clean rosdoc2 \
     sphinx_rtd_theme sphinx-multiversion sphinx-copybutton sphinx-tabs \
     autopep8 \
@@ -111,7 +119,7 @@ RUN ${VIRTUAL_ENV}/bin/pip install -U --retries 10 --timeout 120 \
 
 # ── elevation_mapping_cupy Python deps ──────────────────────────────────────
 RUN if [ "$INSTALL_EMCUPY_ROSDEPS" = "true" ]; then \
-        ${VIRTUAL_ENV}/bin/pip install --prefer-binary -U --retries 10 --timeout 120 \
+        ${VIRTUAL_ENV}/bin/pip install --prefer-binary -U --retries 2 --timeout 120 \
             'scikit-learn' \
             'opencv-python' \
             'cupy-cuda12x' \
