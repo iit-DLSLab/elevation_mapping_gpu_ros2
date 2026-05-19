@@ -17,6 +17,7 @@ ARG USER_GID=$USER_UID
 ARG INSTALL_EMCUPY_ROSDEPS=true
 ARG PYPI_INDEX_URL=https://pypi.org/simple
 ARG JETSON_PIP_EXTRA_INDEX_URL=https://pypi.jetson-ai-lab.dev/jp6/cu126
+ARG JETSON_CUPY_VERSION=14.0.0a1
 
 # Change this to the desired RMW implementation
 # ARG RMW_NAME=zenoh
@@ -179,10 +180,13 @@ RUN /home/${USERNAME}/workspace/.map_env/bin/pip install --no-cache-dir --retrie
     chainer
 
 # Install Jetson-specific GPU wheels from the Jetson index.
-RUN PIP_INDEX_URL=${PYPI_INDEX_URL} \
-    PIP_EXTRA_INDEX_URL=${JETSON_PIP_EXTRA_INDEX_URL} \
+# Keep the Jetson index as the primary source here, otherwise pip may prefer a
+# newer source release from PyPI and try to build CuPy from source.
+RUN PIP_INDEX_URL=${JETSON_PIP_EXTRA_INDEX_URL} \
+    PIP_EXTRA_INDEX_URL=${PYPI_INDEX_URL} \
     /home/${USERNAME}/workspace/.map_env/bin/pip install --no-cache-dir --retries 2 --timeout 120 \
-    torch torchvision cupy
+    --prefer-binary \
+    torch torchvision "cupy==${JETSON_CUPY_VERSION}"
 
 RUN /home/${USERNAME}/workspace/.map_env/bin/pip install --no-cache-dir --retries 2 --timeout 120 \
     -r /home/${USERNAME}/workspace/src/elevation_mapping_cupy/requirements.txt
