@@ -1,2 +1,2 @@
 ROS_DOMAIN_ID=1
-RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+RMW_IMPLEMENTATION=rmw_fastrtps_cpp

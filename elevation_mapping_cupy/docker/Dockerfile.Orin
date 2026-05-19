@@ -2,7 +2,8 @@
 
 # Base image
 #FROM nvidia/cuda:12.1.1-cudnn8-devel-ubuntu22.04
-FROM base_image:l4t-r36.4.3
+ARG BASE_IMAGE=base_image:l4t-r36.4.3
+FROM ${BASE_IMAGE}
 
 # Metadata
 LABEL description="ROS2 environment with CUDA support"
@@ -18,8 +19,8 @@ ARG INSTALL_EMCUPY_ROSDEPS=true
 # Change this to the desired RMW implementation
 # ARG RMW_NAME=zenoh
 # ARG RMW_NAME=fastdds
-ARG RMW_NAME=cyclonedds
-# ARG RMW_NAME=fastrtps
+# ARG RMW_NAME=cyclonedds
+ARG RMW_NAME=fastrtps
 
 
 # BUILD TYPE Debug, Release, RelWithDebInfo, MinSizeRel
@@ -65,7 +66,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
 #     && apt clean \
 #     && rm -rf /var/lib/apt/lists/*
 RUN curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key  -o /usr/share/keyrings/ros-archive-keyring.gpg && \
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(source /etc/os-release && echo $UBUNTU_CODENAME) main" | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null && \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | tee /etc/apt/sources.list.d/ros2.list > /dev/null && \
     apt-get update
 
 # Utils
@@ -85,7 +86,7 @@ RUN apt-get install -y python3-opencv \
                        python3-pip \
                        python3-yaml \
                        python3-tk \
-                       python3-venv \ 
+                       python3-venv \
                        gnupg \
                        libbullet-dev \
                        libpython3-dev \
@@ -107,7 +108,6 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     && apt update && apt install -y --no-install-recommends \
         ros-${ROS_DISTRO}-ros-base \
         ros-${ROS_DISTRO}-rmw-fastrtps-cpp \
-        ros-${ROS_DISTRO}-rmw-cyclonedds-cpp \
         python3-argcomplete \
         ros-${ROS_DISTRO}-${RMW_IMPLEMENTATION_DASH} \
     && apt clean \
@@ -145,41 +145,34 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 #     torchvision 
 
 WORKDIR /home/${USERNAME}/workspace
-COPY ${PWD}/elevation_mapping_cupy /home/${USERNAME}/workspace/src/elevation_mapping_cupy
+COPY elevation_mapping_cupy /home/${USERNAME}/workspace/src/elevation_mapping_cupy
 RUN python3 -m venv .map_env
 
 # Install Python packages
-RUN source /home/${USERNAME}/workspace/.map_env/bin/activate && \
-    python3 -m pip install \
-    # colcon extension to enable easier workspace cleaning
-    colcon-clean\
-    # Almost all ros2 packages
-    rosdoc2\
-    # sphinx is used across packages for documentation
+RUN /home/${USERNAME}/workspace/.map_env/bin/pip install --no-cache-dir \
+    colcon-clean \
+    rosdoc2 \
     sphinx_rtd_theme \
     sphinx-multiversion \
-    sphinx-copybutton\
-    sphinx-tabs\
-    # For VS Code python code formatting I think?
-    autopep8\
-    # Used by multiple packages for linting I think?
-    flake8-builtins\
-    flake8-comprehensions\
-    flake8-docstrings\
-    flake8-import-order\
-    flake8-class-newline\
-    flake8-blind-except\
+    sphinx-copybutton \
+    sphinx-tabs \
+    autopep8 \
+    flake8-builtins \
+    flake8-comprehensions \
+    flake8-docstrings \
+    flake8-import-order \
+    flake8-class-newline \
+    flake8-blind-except \
     flake8-quotes \
     scikit-learn \
-    opencv-python\
-    simple-parsing\
+    opencv-python \
+    simple-parsing \
     cupy-cuda12x \
     transforms3d \
-    chainer \ 
     numpy==1.26.4 \
     torch \
     torchvision && \
-    python3 -m pip install -r /home/${USERNAME}/workspace/src/elevation_mapping_cupy/requirements.txt
+    /home/${USERNAME}/workspace/.map_env/bin/pip install --no-cache-dir -r /home/${USERNAME}/workspace/src/elevation_mapping_cupy/requirements.txt
     # For Python code formatting. Not sure what package uses it
     # black==21.12b0\
 
@@ -197,8 +190,8 @@ RUN echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> /home/$USERNAME/.bashrc \
 # For building GPU supported containers?
 # Install NVIDIA Container Toolkit
 RUN distribution=$(. /etc/os-release;echo $ID$VERSION_ID) \
-    && curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add - \
-    && curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | sudo tee /etc/apt/sources.list.d/nvidia-docker.list \
+    && curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | apt-key add - \
+    && curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | tee /etc/apt/sources.list.d/nvidia-docker.list \
     && apt update && apt install -y nvidia-container-toolkit \
     && apt clean \
     && rm -rf /var/lib/apt/lists/*
