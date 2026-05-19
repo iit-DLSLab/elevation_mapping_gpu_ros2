@@ -15,6 +15,8 @@ ARG USERNAME=ros
 ARG USER_UID=1000
 ARG USER_GID=$USER_UID
 ARG INSTALL_EMCUPY_ROSDEPS=true
+ARG INSTALL_JETSON_ML=false
+ARG SKIP_SEMANTIC_SENSOR=true
 ARG PYPI_INDEX_URL=https://pypi.org/simple
 ARG JETSON_PIP_EXTRA_INDEX_URL=https://pypi.jetson-ai-lab.dev/jp6/cu126
 ARG JETSON_CUPY_VERSION=14.0.0a1
@@ -50,7 +52,8 @@ ENV DEBIAN_FRONTEND=noninteractive \
     # Used by various ROS2 packages
     RMW_IMPLEMENTATION=rmw_${RMW_NAME}_cpp \
     # Should be the same as above but with dashes instead of underscores
-    RMW_IMPLEMENTATION_DASH=rmw-${RMW_NAME}-cpp
+    RMW_IMPLEMENTATION_DASH=rmw-${RMW_NAME}-cpp \
+    SKIP_SEMANTIC_SENSOR=${SKIP_SEMANTIC_SENSOR}
 
 # Install basic utilities and dependencies
 # RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys F42ED6FBAB17C654 && \
@@ -180,13 +183,14 @@ RUN /home/${USERNAME}/workspace/.map_env/bin/pip install --no-cache-dir --retrie
     chainer
 
 # Install Jetson-specific GPU wheels from the Jetson index.
-# Keep the Jetson index as the primary source here, otherwise pip may prefer a
-# newer source release from PyPI and try to build CuPy from source.
-RUN PIP_INDEX_URL=${JETSON_PIP_EXTRA_INDEX_URL} \
-    PIP_EXTRA_INDEX_URL=${PYPI_INDEX_URL} \
-    /home/${USERNAME}/workspace/.map_env/bin/pip install --no-cache-dir --retries 2 --timeout 120 \
-    --prefer-binary \
-    torch torchvision "cupy==${JETSON_CUPY_VERSION}"
+RUN if [ "${INSTALL_JETSON_ML}" = "true" ]; then \
+            PIP_INDEX_URL=${PYPI_INDEX_URL} \
+            PIP_EXTRA_INDEX_URL=${JETSON_PIP_EXTRA_INDEX_URL} \
+            /home/${USERNAME}/workspace/.map_env/bin/pip install --no-cache-dir --retries 2 --timeout 120 \
+            torch torchvision cupy-cuda12x; \
+        else \
+            echo "Skipping Jetson ML wheels (torch/torchvision/cupy-cuda12x)."; \
+        fi
 
 RUN /home/${USERNAME}/workspace/.map_env/bin/pip install --no-cache-dir --retries 2 --timeout 120 \
     -r /home/${USERNAME}/workspace/src/elevation_mapping_cupy/requirements.txt

@@ -4,6 +4,17 @@ cd /home/ros/workspace
 # Set the default build type
 source /opt/ros/$ROS_DISTRO/setup.bash
 BUILD_TYPE=RelWithDebInfo #Debug, Release, RelWithDebInfo, MinSizeRel
+SKIP_SEMANTIC_SENSOR=${SKIP_SEMANTIC_SENSOR:-true}
+
+PACKAGES_SKIP=(
+        convex_plane_decomposition
+        convex_plane_decomposition_ros
+)
+
+if [ "$SKIP_SEMANTIC_SENSOR" = "true" ]; then
+        PACKAGES_SKIP+=(semantic_sensor)
+fi
+
 colcon build \
         --continue-on-error \
         --parallel-workers $(nproc) \
@@ -16,6 +27,4 @@ colcon build \
                 "-DCMAKE_EXPORT_COMPILE_COMMANDS=On" \
                 "-DBUILD_TESTING=OFF" \
                 "-DCMAKE_CXX_FLAGS=-Wl,--allow-shlib-undefined -Wall -Wextra -Wpedantic -Wshadow" \
-        --packages-skip \
-                convex_plane_decomposition \
-                convex_plane_decomposition_ros
+        --packages-skip "${PACKAGES_SKIP[@]}"
