@@ -156,6 +156,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 WORKDIR /home/${USERNAME}/workspace
 COPY elevation_mapping_cupy /home/${USERNAME}/workspace/src/elevation_mapping_cupy
 RUN python3 -m venv .map_env
+ENV VIRTUAL_ENV=/home/${USERNAME}/workspace/.map_env
 
 # Install generic Python packages from PyPI.
 RUN /home/${USERNAME}/workspace/.map_env/bin/pip install --no-cache-dir --retries 2 --timeout 120 \
@@ -178,7 +179,7 @@ RUN /home/${USERNAME}/workspace/.map_env/bin/pip install --no-cache-dir --retrie
     opencv-python \
     simple-parsing \
     transforms3d \
-    numpy==1.26.4 \
+    numpy>=1.24,<2 \
     ruamel.yaml \
     chainer
 
@@ -218,6 +219,11 @@ RUN distribution=$(. /etc/os-release;echo $ID$VERSION_ID) \
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     if [ "$INSTALL_EMCUPY_ROSDEPS" = true ]; then \
+        if [ "$ROS_DISTRO" = "humble" ]; then \
+            SCIPY_SPEC='scipy>=1.10,<1.16'; \
+        else \
+            SCIPY_SPEC='scipy>=1.17.1'; \
+        fi; \
         apt update && DEBIAN_FRONTEND=${DEBIAN_FRONTEND} apt install -y --no-install-recommends \
         # resolved by rosdep as boost
         libboost-all-dev\
@@ -243,9 +249,6 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         # rosdep grid_map_demos
         ros-${ROS_DISTRO}-grid-map-demos\
         ros-${ROS_DISTRO}-point-cloud-transport\
-        python3-shapely\
-        python3-scipy\
-        python3-ruamel.yaml\
         #################################
         ### For debugging elevation_mapping_cupy by setting up turtlebot3_simulations####
         # ros-${ROS_DISTRO}-turtlebot3*\
@@ -261,7 +264,17 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         ros-${ROS_DISTRO}-ros-gz \
         #############################################
         && apt clean && \
-        rm -rf /var/lib/apt/lists/* ;\
+        rm -rf /var/lib/apt/lists/* && \
+        ${VIRTUAL_ENV}/bin/pip install --prefer-binary -U --retries 10 --timeout 120 \
+            'scikit-learn' \
+            'opencv-python' \
+            'cupy-cuda12x>=13.0,<14' \
+            'ruamel.yaml>=0.18.0' \
+            simple-parsing \
+            "numpy>=1.24,<2" \
+            shapely \
+            transforms3d \
+            "${SCIPY_SPEC}"; \
     fi
 
 ARG WORKSPACE="/home/${USERNAME}/workspace"
