@@ -4,14 +4,16 @@ version: "3"
 services:  
   elevation_mapping:
     image: "elevation_mapping_cupy_ros2:latest"
-    container_name: "elevation_mapping_package"
+    container_name: "elevation_mapping_package2"
     env_file: ".ros-env"
     runtime: nvidia
     environment:
-      DISPLAY: $DISPLAY
       NVIDIA_DRIVER_CAPABILITIES: all
       QT_X11_NO_MITSHM: 1
       NVIDIA_VISIBLE_DEVICES: all
+      DISPLAY: ${DISPLAY}
+      CUDA_PATH: /usr/local/cuda
+      CUPY_NVCC_GENERATE_CODE: arch=compute_87,code=sm_87
     volumes: 
       - /tmp/.X11-unix:/tmp/.X11-unix
       - ~/.Xauthority:/root/.Xauthority
@@ -23,9 +25,12 @@ services:
     network_mode: "host"
     privileged: true
     tty: true
-    command: /bin/bash -c " source /home/ros/workspace/.map_env/bin/activate; \
-             source /home/ros/workspace/install/setup.bash; \ 
-             ros2 launch elevation_mapping_cupy elevation_mapping.launch.py"
+    command: >
+            bash -lc "
+            source /home/ros/workspace/.map_env/bin/activate &&
+            source /home/ros/workspace/install/setup.bash &&
+            ros2 launch elevation_mapping_cupy elevation_mapping.launch.py
+            "
   
   rviz: 
     image: "elevation_mapping_cupy_ros2:latest"

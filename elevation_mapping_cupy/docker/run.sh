@@ -29,9 +29,9 @@ RUN_COMMAND=(
   --device-cgroup-rule 'c 189:* rmw'
   --device-cgroup-rule 'c 81:* rmw'
   "${IMAGE_NAME}"
-  /bin/bash
-  -c
-  "source /home/ros/workspace/.map_env/bin/activate; source /home/ros/workspace/install/setup.bash; ros2 launch elevation_mapping_cupy elevation_mapping.launch.py"
+  # /bin/bash
+  # -c
+  # "source /home/ros/workspace/.map_env/bin/activate; source /home/ros/workspace/install/setup.bash;"
 )
 
 if docker ps -a --format '{{.Names}}' | grep -Fxq "${CONTAINER_NAME}"; then

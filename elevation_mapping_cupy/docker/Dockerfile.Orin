@@ -15,23 +15,24 @@ ARG USERNAME=ros
 ARG USER_UID=1000
 ARG USER_GID=$USER_UID
 ARG INSTALL_EMCUPY_ROSDEPS=true
-ARG INSTALL_JETSON_ML=false
+ARG INSTALL_JETSON_ML=true
 ARG SKIP_SEMANTIC_SENSOR=true
 ARG PYPI_INDEX_URL=https://pypi.org/simple
 ARG JETSON_PIP_EXTRA_INDEX_URL=https://pypi.jetson-ai-lab.dev/jp6/cu126
-ARG JETSON_CUPY_VERSION=14.0.0a1
 
 # Change this to the desired RMW implementation
 # ARG RMW_NAME=zenoh
 # ARG RMW_NAME=fastdds
-# ARG RMW_NAME=cyclonedds
-ARG RMW_NAME=fastrtps
+ARG RMW_NAME=cyclonedds
+#ARG RMW_NAME=fastrtps
 
 
 # BUILD TYPE Debug, Release, RelWithDebInfo, MinSizeRel
 ARG BUILD_TYPE=RelWithDebInfo 
 
 ENV TURTLEBOT3_MODEL=waffle_realsense_depth
+ENV CUDA_PATH=/usr/local/cuda
+ENV CUPY_NVCC_GENERATE_CODE="arch=compute_87,code=sm_87"
 
 # Environment variables
 ENV DEBIAN_FRONTEND=noninteractive \
@@ -117,6 +118,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     && apt update && apt install -y --no-install-recommends \
         ros-${ROS_DISTRO}-ros-base \
         ros-${ROS_DISTRO}-rmw-fastrtps-cpp \
+        ros-${ROS_DISTRO}-rmw-cyclonedds-cpp \
         python3-argcomplete \
         ros-${ROS_DISTRO}-${RMW_IMPLEMENTATION_DASH} \
     && apt clean \
@@ -182,15 +184,19 @@ RUN /home/${USERNAME}/workspace/.map_env/bin/pip install --no-cache-dir --retrie
     ruamel.yaml \
     chainer
 
-# Install Jetson-specific GPU wheels from the Jetson index.
+# Install environment
 RUN if [ "${INSTALL_JETSON_ML}" = "true" ]; then \
-            PIP_INDEX_URL=${PYPI_INDEX_URL} \
-            PIP_EXTRA_INDEX_URL=${JETSON_PIP_EXTRA_INDEX_URL} \
-            /home/${USERNAME}/workspace/.map_env/bin/pip install --no-cache-dir --retries 2 --timeout 120 \
-            torch torchvision cupy-cuda12x; \
-        else \
-            echo "Skipping Jetson ML wheels (torch/torchvision/cupy-cuda12x)."; \
-        fi
+        /home/${USERNAME}/workspace/.map_env/bin/pip uninstall -y \
+            torch torchvision torchaudio cupy cupy-cuda11x cupy-cuda12x cupy-cuda13x numpy || true && \
+        # /home/${USERNAME}/workspace/.map_env/bin/pip cache purge && \
+        /home/${USERNAME}/workspace/.map_env/bin/pip install --no-cache-dir \
+            --index-url https://pypi.jetson-ai-lab.io/jp6/cu126 \
+            torch==2.8.0 torchvision==0.23.0 && \
+        /home/${USERNAME}/workspace/.map_env/bin/pip install --no-cache-dir \
+            "numpy<2" "cupy-cuda12x<14" ; \
+    else \
+        echo "Skipping Jetson ML wheels (torch/torchvision/cupy/numpy)."; \
+    fi
 
 RUN /home/${USERNAME}/workspace/.map_env/bin/pip install --no-cache-dir --retries 2 --timeout 120 \
     -r /home/${USERNAME}/workspace/src/elevation_mapping_cupy/requirements.txt
