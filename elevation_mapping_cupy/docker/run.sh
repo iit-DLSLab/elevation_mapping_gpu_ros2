@@ -1,46 +1,47 @@
 #!/bin/bash
 
-# The Docker image name
+set -euo pipefail
+
 IMAGE_NAME="elevation_mapping_cupy_ros2:latest"
+CONTAINER_NAME="elevation_mapping_package"
 
-# Path to your ROS workspace on the host
-HOST_WORKSPACE=$(pwd) # Path to your ROS workspace in the container
-ROSBAGPATH=${1:-"/rosbag_path"} # Path to the rosbag directory in the container
-ROS_DOMAIN=1                    # Change ROS DOMAIN ID if needed
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENV_FILE="${SCRIPT_DIR}/.ros-env"
+CONFIG_DIR="$(realpath "${SCRIPT_DIR}/../elevation_mapping_cupy/config")"
 
-echo $HOST_WORKSPACE
+RUN_COMMAND=(
+  docker run
+  --name "${CONTAINER_NAME}"
+  --runtime nvidia
+  --privileged
+  --network host
+  --tty
+  --interactive
+  --env-file "${ENV_FILE}"
+  --env "DISPLAY=${DISPLAY:-}"
+  --env "NVIDIA_DRIVER_CAPABILITIES=all"
+  --env "NVIDIA_VISIBLE_DEVICES=all"
+  --env "QT_X11_NO_MITSHM=1"
+  --volume /tmp/.X11-unix:/tmp/.X11-unix
+  --volume "${HOME}/.Xauthority:/root/.Xauthority"
+  --volume /dev/bus/usb:/dev/bus/usb
+  --volume "${CONFIG_DIR}:/home/ros/workspace/install/share/elevation_mapping_cupy/config"
+  --device-cgroup-rule 'c 189:* rmw'
+  --device-cgroup-rule 'c 81:* rmw'
+  "${IMAGE_NAME}"
+  # /bin/bash
+  # -c
+  # "source /home/ros/workspace/.map_env/bin/activate; source /home/ros/workspace/install/setup.bash;"
+)
 
-# Define environment variables for graphical output
-XSOCK=/tmp/.X11-unix
-XAUTH=/tmp/.docker.xauth
-if [ ! -f $XAUTH ]; then
-    touch $XAUTH
-    xauth nlist :0 | sed -e 's/^..../ffff/' | xauth -f $XAUTH nmerge -
-    chmod a+r $XAUTH
+if docker ps -a --format '{{.Names}}' | grep -Fxq "${CONTAINER_NAME}"; then
+  echo "[run.sh] Removing existing container ${CONTAINER_NAME} to match docker compose recreate behavior."
+  docker rm -f "${CONTAINER_NAME}" >/dev/null
 fi
 
-echo "---------------------"
-RUN_COMMAND="docker run  \
-  --volume=$XSOCK:$XSOCK:rw \
-  --volume=$XAUTH:$XAUTH:rw \
-  --env=\"QT_X11_NO_MITSHM=1\" \
-  --env=\"XAUTHORITY=$XAUTH\" \
-  --env=\"DISPLAY=$DISPLAY\" \
-  --env=\"ROS_DOMAIN_ID=$ROS_DOMAIN\" \
-  --ulimit rtprio=99 \
-  --cap-add=sys_nice \
-  --privileged \
-  --net=host \
-  --name=elevation_mapping \
-  -e HOST_USERNAME=$(whoami) \
-  -v ${HOST_WORKSPACE}/elevation_mapping_cupy:/home/ros/workspace/src/elevation_mapping_cupy \
-  -v /media:/media \
-  -v ${ROSBAGPATH}:/home/ros/rosbags \
-  --runtime=nvidia \
-  --user 1000:1000 \
-  -it $IMAGE_NAME"
+echo "[run.sh] Launching ${CONTAINER_NAME} from ${IMAGE_NAME}."
+printf '[run.sh] Command:'
+printf ' %q' "${RUN_COMMAND[@]}"
+printf '\n'
 
-echo -e "[run.sh]: \e[1;32mThe final run command is:\n\e[0;35m$RUN_COMMAND\e[0m."
-eval $RUN_COMMAND
-echo -e "[run.sh]: \e[1;32mDocker terminal closed.\e[0m"
-
+"${RUN_COMMAND[@]}"
