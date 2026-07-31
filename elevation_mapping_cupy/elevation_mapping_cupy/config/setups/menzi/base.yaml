@@ -17,7 +17,7 @@ elevation_mapping_node:
     subscribers:
       pointcloud_sensor_name:
         #topic_name: '/velodyne_points'
-        topic_name: '/unilidar/cloud'
+        topic_name: '/boxi/hesai/points' #/unilidar/cloud'
         data_type: pointcloud
 
     publishers:
