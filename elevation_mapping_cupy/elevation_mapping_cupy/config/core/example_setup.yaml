@@ -28,7 +28,7 @@ elevation_mapping:
     #topic_name: '/velodyne_points'
     subscribers:
       pointcloud_sensor_name:
-        topic_name: '/boxi/hesai/points' #/unilidar/cloud'
+        topic_name: '/realsense/front/camera/depth/color/points' #/unilidar/cloud'
         data_type: pointcloud
 
       # front_cam:
