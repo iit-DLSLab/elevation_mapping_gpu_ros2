@@ -109,7 +109,9 @@ RUN apt-get install -y python3-opencv \
                        python3-rosinstall-generator \
                        libasio-dev \
                        libtinyxml2-dev \
-                       libcunit1-dev     
+                       libcunit1-dev \
+                       libgmp-dev \
+                       libmpfr-dev
 
 # Install ROS2
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
@@ -163,6 +165,7 @@ RUN python3 -m venv .map_env
 RUN /home/${USERNAME}/workspace/.map_env/bin/pip install --no-cache-dir --retries 2 --timeout 120 \
     pip 'setuptools<80' wheel \
     colcon-clean \
+    colcon-common-extensions \
     rosdoc2 \
     sphinx_rtd_theme \
     sphinx-multiversion \

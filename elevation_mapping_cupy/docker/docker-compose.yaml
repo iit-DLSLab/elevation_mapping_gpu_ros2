@@ -14,11 +14,12 @@ services:
       DISPLAY: ${DISPLAY}
       CUDA_PATH: /usr/local/cuda
       CUPY_NVCC_GENERATE_CODE: arch=compute_87,code=sm_87
+      ROS_DOMAIN_ID: 55
     volumes: 
       - /tmp/.X11-unix:/tmp/.X11-unix
       - ~/.Xauthority:/root/.Xauthority
       - /dev/bus/usb:/dev/bus/usb
-      - ../elevation_mapping_cupy/config:/home/ros/workspace/install/share/elevation_mapping_cupy/config
+      - ../elevation_mapping_cupy/config:/home/ros/workspace/src/elevation_mapping_cupy/elevation_mapping_cupy/config:ro
     device_cgroup_rules:
       - 'c 189:* rmw'
       - 'c 81:* rmw'

@@ -8,6 +8,7 @@ CONTAINER_NAME="elevation_mapping_package"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ENV_FILE="${SCRIPT_DIR}/.ros-env"
 CONFIG_DIR="$(realpath "${SCRIPT_DIR}/../elevation_mapping_cupy/config")"
+CONTAINER_CONFIG_DIR="/home/ros/workspace/src/elevation_mapping_cupy/elevation_mapping_cupy/config"
 
 RUN_COMMAND=(
   docker run
@@ -25,7 +26,7 @@ RUN_COMMAND=(
   --volume /tmp/.X11-unix:/tmp/.X11-unix
   --volume "${HOME}/.Xauthority:/root/.Xauthority"
   --volume /dev/bus/usb:/dev/bus/usb
-  --volume "${CONFIG_DIR}:/home/ros/workspace/install/share/elevation_mapping_cupy/config"
+  --volume "${CONFIG_DIR}:${CONTAINER_CONFIG_DIR}:ro"
   --device-cgroup-rule 'c 189:* rmw'
   --device-cgroup-rule 'c 81:* rmw'
   "${IMAGE_NAME}"
