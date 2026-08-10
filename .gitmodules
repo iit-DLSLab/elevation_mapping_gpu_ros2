@@ -1,0 +1,3 @@
+[submodule "elevation_mapping_cupy/plane_segmentation_ros2"]
+	path = elevation_mapping_cupy/plane_segmentation_ros2
+	url = https://github.com/zhengxiang94/plane_segmentation_ros2.git
