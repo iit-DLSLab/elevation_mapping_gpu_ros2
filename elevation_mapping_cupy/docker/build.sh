@@ -6,25 +6,16 @@ source /opt/ros/$ROS_DISTRO/setup.bash
 BUILD_TYPE=RelWithDebInfo #Debug, Release, RelWithDebInfo, MinSizeRel
 SKIP_SEMANTIC_SENSOR=${SKIP_SEMANTIC_SENSOR:-true}
 
-PACKAGES_SKIP=(
-        convex_plane_decomposition
-        convex_plane_decomposition_ros
-)
-
-if [ "$SKIP_SEMANTIC_SENSOR" = "true" ]; then
-        PACKAGES_SKIP+=(semantic_sensor)
-fi
-
 colcon build \
         --continue-on-error \
-        --parallel-workers $(nproc) \
+        # --parallel-workers 2 \ 
+        # $(nproc) \
         --merge-install \
         --symlink-install \
-        --event-handlers console_cohesion+ \
+        # --event-handlers console_cohesion+ \
         --base-paths src \
         --cmake-args \
                 "-DCMAKE_BUILD_TYPE=$BUILD_TYPE" \
                 "-DCMAKE_EXPORT_COMPILE_COMMANDS=On" \
                 "-DBUILD_TESTING=OFF" \
-                "-DCMAKE_CXX_FLAGS=-Wl,--allow-shlib-undefined -Wall -Wextra -Wpedantic -Wshadow" \
-        --packages-skip "${PACKAGES_SKIP[@]}"
+                "-DCMAKE_CXX_FLAGS=-Wl,--allow-shlib-undefined -Wall -Wextra -Wpedantic -Wshadow"
