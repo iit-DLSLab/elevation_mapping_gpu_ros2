@@ -11,7 +11,7 @@ elevation_mapping_node:
     sensor_noise_factor: 0.05                       # point's noise is sensor_noise_factor*z^2 (z is distance from sensor).
     mahalanobis_thresh: 2.0                         # points outside this distance is outlier.
     outlier_variance: 0.01                          # if point is outlier, add this value to the cell.
-    drift_compensation_variance_inler: 0.05         # cells under this value is used for drift compensation.
+    drift_compensation_variance_inlier: 0.05         # cells under this value is used for drift compensation.
     max_drift: 0.1                                  # drift compensation happens only the drift is smaller than this value (for safety)
     drift_compensation_alpha: 0.1                   # drift compensation alpha for smoother update of drift compensation
     time_variance: 0.0001                           # add this value when update_variance is called.

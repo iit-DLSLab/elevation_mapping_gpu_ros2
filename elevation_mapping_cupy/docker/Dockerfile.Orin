@@ -123,6 +123,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         ros-${ROS_DISTRO}-rmw-cyclonedds-cpp \
         python3-argcomplete \
         ros-${ROS_DISTRO}-${RMW_IMPLEMENTATION_DASH} \
+        ros-${ROS_DISTRO}-topic-tools \
     && apt clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -185,7 +186,9 @@ RUN /home/${USERNAME}/workspace/.map_env/bin/pip install --no-cache-dir --retrie
     transforms3d \
     numpy==1.26.4 \
     ruamel.yaml \
-    chainer
+    chainer \
+    empy==3.3.4 \
+    lark
 
 # 1. Install Jetson ML wheels along with cuDSS
 RUN if [ "${INSTALL_JETSON_ML}" = "true" ]; then \

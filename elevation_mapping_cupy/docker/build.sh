@@ -26,7 +26,9 @@ COMMON_ARGS=(
 )
 
 cd "${WORKSPACE_DIR}"
+set +u
 source "/opt/ros/${ROS_DISTRO}/setup.bash"
+set -u
 
 if [ -f "${WORKSPACE_DIR}/.map_env/bin/activate" ]; then
   # Keep the Python environment aligned with the one prepared in the image.
@@ -44,7 +46,9 @@ colcon build \
   --packages-skip "${PACKAGES_TO_SKIP[@]}"
 
 if [ -f "${WORKSPACE_DIR}/install/setup.bash" ]; then
+  set +u
   source "${WORKSPACE_DIR}/install/setup.bash"
+  set -u
 fi
 
 echo "[build.sh] Stage 2/2: building plane segmentation workspace."
