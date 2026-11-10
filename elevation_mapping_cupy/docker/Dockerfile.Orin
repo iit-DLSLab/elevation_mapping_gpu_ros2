@@ -205,7 +205,7 @@ RUN if [ "${INSTALL_JETSON_ML}" = "true" ]; then \
             torch torchvision torchaudio cupy cupy-cuda11x cupy-cuda12x cupy-cuda13x numpy || true && \
         /home/${USERNAME}/workspace/.map_env/bin/pip install --no-cache-dir \
             --index-url ${JETSON_PIP_EXTRA_INDEX_URL} \
-            torch torchvision "numpy<2" "cupy-cuda12x<14" nvidia-cudss-cu12 ; \
+            torch torchvision "numpy<2" "cupy-cuda12x<14" nvidia-cudss-cu12==0.8.0.10 ; \
     else \
         echo "Skipping Jetson ML wheels."; \
     fi
