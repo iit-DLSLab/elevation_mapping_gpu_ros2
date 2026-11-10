@@ -1,8 +1,10 @@
 # elevation_mapping_gpu_ros2
-This repo contains the implementation of elevation mapping cupy for ros2 humble for the Nvidia Jetson Orin Board.
+This repo contains the implementation of elevation mapping cupy for ros2 jazzy for the Nvidia Jetson Orin Board.
 
 ## Build Docker Image
-In order to build the Docker image with all the required dependencies to run the elevation mapping cupy, run the following command. This will install a Ubuntu 22 environment with ROS2 Humble and CUDA 12 for ARM architecture machines.
+In order to build the Docker image with all the required dependencies to run the elevation mapping cupy, run the following command. This will install a Ubuntu 24.04 environment with ROS2 Jazzy, CUDA 12.9 (Jetson/Tegra build, running on the JetPack 6 driver through `cuda-compat`), cuDNN 9 and PyTorch 2.8 for ARM architecture machines.
+
+Host requirements: Jetson Orin with JetPack 6.x (L4T r36.x) and the NVIDIA container runtime. All nodes talking to this container (cameras, rviz, ...) must also run ROS 2 Jazzy: mixing Humble and Jazzy causes `serdata.cpp` deserialization errors.
 
 Clone this repo:
 ```

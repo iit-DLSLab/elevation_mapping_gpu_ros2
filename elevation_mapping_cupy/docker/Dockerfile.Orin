@@ -1,19 +1,20 @@
 # syntax=docker/dockerfile:1.4
 
 # Base image
-#FROM nvidia/cuda:12.1.1-cudnn8-devel-ubuntu22.04
-# Public NVIDIA JetPack 6.1 image (Ubuntu 22.04 + CUDA 12.6 + cuDNN + TensorRT).
-# ROS 2 is installed below, so no pre-built/private base image is needed.
-# Must match the L4T major version of the Jetson host (r36.x).
-ARG BASE_IMAGE=nvcr.io/nvidia/l4t-jetpack:r36.4.0
+# ROS 2 Jazzy only ships apt packages for Ubuntu 24.04, while the official
+# JetPack 6 images (l4t-jetpack:r36.x) are Ubuntu 22.04. So we start from plain
+# Ubuntu 24.04 and install the Jetson (Tegra) CUDA/cuDNN builds on top, the same
+# approach used by dusty-nv/jetson-containers for its r36 + 24.04 images.
+# Host requirement: Jetson Orin with JetPack 6.x (L4T r36.x) + NVIDIA container runtime.
+ARG BASE_IMAGE=ubuntu:24.04
 FROM ${BASE_IMAGE}
 
 # Metadata
-LABEL description="ROS2 environment with CUDA support"
-LABEL version="1.0"
+LABEL description="ROS2 Jazzy environment with CUDA support for Jetson Orin (JetPack 6)"
+LABEL version="2.0"
 
 # Build arguments
-ARG ROS_DISTRO=humble
+ARG ROS_DISTRO=jazzy
 ARG USERNAME=ros
 ARG USER_UID=1000
 ARG USER_GID=$USER_UID
@@ -21,7 +22,17 @@ ARG INSTALL_EMCUPY_ROSDEPS=true
 ARG INSTALL_JETSON_ML=true
 ARG SKIP_SEMANTIC_SENSOR=true
 ARG PYPI_INDEX_URL=https://pypi.org/simple
-ARG JETSON_PIP_EXTRA_INDEX_URL=https://pypi.jetson-ai-lab.io/jp6/cu126
+# cu129 is the only JetPack 6 index with Python 3.12 (Ubuntu 24.04) torch wheels.
+ARG JETSON_PIP_EXTRA_INDEX_URL=https://pypi.jetson-ai-lab.io/jp6/cu129
+ARG TORCH_VERSION=2.8.0
+ARG TORCHVISION_VERSION=0.23.0
+
+# Jetson (Tegra) CUDA + cuDNN local repos. CUDA 12.9 runs on the JetPack 6
+# (CUDA 12.6) driver via the cuda-compat libraries extracted below.
+ARG CUDA_URL=https://developer.download.nvidia.com/compute/cuda/12.9.1/local_installers/cuda-tegra-repo-ubuntu2204-12-9-local_12.9.1-1_arm64.deb
+ARG CUDA_PACKAGES="cuda-toolkit-12-9"
+ARG CUDNN_URL=https://developer.download.nvidia.com/compute/cudnn/9.10.2/local_installers/cudnn-local-tegra-repo-ubuntu2204-9.10.2_1.0-1_arm64.deb
+ARG CUDNN_PACKAGES="libcudnn9-cuda-12 libcudnn9-dev-cuda-12"
 
 # Change this to the desired RMW implementation
 # ARG RMW_NAME=zenoh
@@ -40,7 +51,7 @@ ENV CUPY_NVCC_GENERATE_CODE="arch=compute_87,code=sm_87"
 # Environment variables
 ENV DEBIAN_FRONTEND=noninteractive \
     LANG=en_US.UTF-8 \
-    LC_ALL=${LANG}\
+    LC_ALL=en_US.UTF-8 \
     TZ=UTC \
     PYTHONUNBUFFERED=1 \
     PIP_INDEX_URL=${PYPI_INDEX_URL} \
@@ -50,9 +61,10 @@ ENV DEBIAN_FRONTEND=noninteractive \
     ROS_ROOT=/opt/ros/${ROS_DISTRO} \
     AMENT_PREFIX_PATH=/opt/ros/${ROS_DISTRO} \
     COLCON_PREFIX_PATH=/opt/ros/${ROS_DISTRO} \
-    LD_LIBRARY_PATH=/opt/ros/${ROS_DISTRO}/lib:/usr/local/cuda/lib64 \
-    PATH=/opt/ros/${ROS_DISTRO}/bin:/usr/src/tensorrt/bin:/usr/local/cuda/bin:/opt/local/bin:/opt/local/sbin:/usr/bin/c++:/usr/bin/make:$PATH \
-    PYTHONPATH=/opt/ros/${ROS_DISTRO}/lib/python3.10/site-packages \
+    CUDA_HOME=/usr/local/cuda \
+    LD_LIBRARY_PATH=/usr/local/cuda/compat:/opt/ros/${ROS_DISTRO}/lib:/usr/local/cuda/lib64 \
+    PATH=/opt/ros/${ROS_DISTRO}/bin:/usr/local/cuda/bin:/opt/local/bin:/opt/local/sbin:/usr/bin/c++:/usr/bin/make:$PATH \
+    PYTHONPATH=/opt/ros/${ROS_DISTRO}/lib/python3.12/site-packages \
     # Used by various ROS2 packages
     RMW_IMPLEMENTATION=rmw_${RMW_NAME}_cpp \
     # Should be the same as above but with dashes instead of underscores
@@ -78,12 +90,33 @@ ENV DEBIAN_FRONTEND=noninteractive \
 #     && dpkg-reconfigure -f ${DEBIAN_FRONTEND} tzdata \
 #     && apt clean \
 #     && rm -rf /var/lib/apt/lists/*
-# Bootstrap tools/locale that the plain JetPack image does not ship.
+# Bootstrap tools/locale that the plain Ubuntu image does not ship.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        curl ca-certificates gnupg2 lsb-release locales tzdata \
+        curl wget ca-certificates gnupg2 lsb-release locales tzdata binutils xz-utils \
     && locale-gen en_US.UTF-8 \
     && update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8 \
     && rm -rf /var/lib/apt/lists/*
+
+# Jetson CUDA toolkit + cuDNN (Tegra builds) and OpenBLAS (needed by Jetson torch).
+# The local repo .debs are several GB, so download, install and purge them in one layer.
+RUN set -ex \
+    && mkdir -p /tmp/cuda && cd /tmp/cuda \
+    && wget -q ${CUDA_URL} -O cuda-repo.deb && dpkg -i cuda-repo.deb && rm cuda-repo.deb \
+    && cp /var/cuda-tegra-repo-*/cuda-*-keyring.gpg /usr/share/keyrings/ \
+    # cuda-compat lets CUDA 12.9 run on the JetPack 6 driver. Extract it by hand:
+    # its package depends on nvidia-l4t-core, which only exists on the host.
+    && ar x /var/cuda-tegra-repo-*/cuda-compat-*.deb && tar xf data.tar.xz -C / \
+    && wget -q ${CUDNN_URL} -O cudnn-repo.deb && dpkg -i cudnn-repo.deb && rm cudnn-repo.deb \
+    && cp /var/cudnn-local-tegra-repo-*/cudnn-*-keyring.gpg /usr/share/keyrings/ \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends ${CUDA_PACKAGES} ${CUDNN_PACKAGES} libopenblas-dev \
+    && dpkg -P $(dpkg-query -W -f='${Package}\n' | grep -E '^(cuda-tegra-repo|cudnn-local-tegra-repo)') \
+    && rm -rf /tmp/cuda /var/cuda-tegra-repo-* /var/cudnn-local-tegra-repo-* /var/lib/apt/lists/* \
+    && apt-get clean \
+    && ls /usr/local/cuda/compat/libcuda.so* \
+    # Host Tegra driver libs are mounted here by the NVIDIA container runtime.
+    && printf '/usr/lib/aarch64-linux-gnu/nvidia\n/usr/lib/aarch64-linux-gnu/tegra\n' > /etc/ld.so.conf.d/nvidia-tegra.conf \
+    && ldconfig
 RUN curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key  -o /usr/share/keyrings/ros-archive-keyring.gpg && \
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | tee /etc/apt/sources.list.d/ros2.list > /dev/null && \
     apt-get update
@@ -155,7 +188,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         ros-${ROS_DISTRO}-ament-* \
         python3-rosdep \
         libxine2-dev \
-        libtiff5-dev \
+        libtiff-dev \
         libpostproc-dev \
         libopencv-dev \
     && apt clean \
@@ -205,21 +238,24 @@ RUN if [ "${INSTALL_JETSON_ML}" = "true" ]; then \
             torch torchvision torchaudio cupy cupy-cuda11x cupy-cuda12x cupy-cuda13x numpy || true && \
         /home/${USERNAME}/workspace/.map_env/bin/pip install --no-cache-dir \
             --index-url ${JETSON_PIP_EXTRA_INDEX_URL} \
-            torch torchvision "numpy<2" "cupy-cuda12x<14" nvidia-cudss-cu12==0.8.0.10 ; \
+            torch==${TORCH_VERSION} torchvision==${TORCHVISION_VERSION} "numpy<2" "cupy-cuda12x<14" nvidia-cudss-cu12==0.8.0.10 ; \
     else \
         echo "Skipping Jetson ML wheels."; \
     fi
 
 # 2. Install general dependencies from standard PyPI
-RUN sed -i 's/shapely==1.7.1/# shapely==1.7.1/g' /home/${USERNAME}/workspace/src/elevation_mapping_cupy/requirements.txt && \
+# scikit-image 0.19 has no Python 3.12 wheels; 0.24 is the newest that still supports numpy<2.
+RUN sed -i 's/shapely==1.7.1/# shapely==1.7.1/g; s/scikit-image==0.19/scikit-image==0.24.0/g' /home/${USERNAME}/workspace/src/elevation_mapping_cupy/requirements.txt && \
     /home/${USERNAME}/workspace/.map_env/bin/pip install --no-cache-dir --retries 2 --timeout 120 \
     "shapely>=2.0" \
     -r /home/${USERNAME}/workspace/src/elevation_mapping_cupy/requirements.txt
 
-ENV LD_LIBRARY_PATH=/home/ros/workspace/.map_env/lib/python3.10/site-packages/nvidia/cu12/lib:/opt/ros/${ROS_DISTRO}/lib:/usr/local/cuda/lib64:${LD_LIBRARY_PATH}
+ENV LD_LIBRARY_PATH=/home/ros/workspace/.map_env/lib/python3.12/site-packages/nvidia/cu12/lib:${LD_LIBRARY_PATH}
 
-# Set up non-root user
-RUN groupadd --gid $USER_GID $USERNAME \
+# Set up non-root user (ubuntu:24.04 ships a default "ubuntu" user on UID/GID 1000)
+RUN (userdel -r ubuntu 2>/dev/null || true) \
+    && (groupdel ubuntu 2>/dev/null || true) \
+    && groupadd --gid $USER_GID $USERNAME \
     && useradd -s /bin/bash --uid $USER_UID --gid $USER_GID -m $USERNAME \
     && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
     && chmod 0440 /etc/sudoers.d/$USERNAME
@@ -302,7 +338,7 @@ RUN apt update && \
     vcs import /home/${USERNAME}/workspace/src < /home/${USERNAME}/workspace/src/elevation_mapping_cupy/docker/src.repos --recursive -w $(($(nproc)/2))
 
 RUN rosdep update && \
-    rosdep install --from-paths /home/${USERNAME}/workspace/src --ignore-src -y -r --skip-keys="numpy catkin roscpp gazebo_ros_pkgs gazebo_ros gazebo_plugins" 
+    rosdep install --from-paths /home/${USERNAME}/workspace/src --ignore-src -y -r --skip-keys="numpy catkin roscpp gazebo_ros_pkgs gazebo_ros gazebo_plugins cupy-cuda12x numpy_lessthan_2 simple-parsing" 
     
 SHELL ["/bin/bash", "-c"]
 RUN bash /home/${USERNAME}/workspace/src/elevation_mapping_cupy/docker/build.sh
