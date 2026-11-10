@@ -2,7 +2,10 @@
 
 # Base image
 #FROM nvidia/cuda:12.1.1-cudnn8-devel-ubuntu22.04
-ARG BASE_IMAGE=ghcr.io/iit-dlslab/jetson_base_image:l4t-r36.4.3
+# Public NVIDIA JetPack 6.1 image (Ubuntu 22.04 + CUDA 12.6 + cuDNN + TensorRT).
+# ROS 2 is installed below, so no pre-built/private base image is needed.
+# Must match the L4T major version of the Jetson host (r36.x).
+ARG BASE_IMAGE=nvcr.io/nvidia/l4t-jetpack:r36.4.0
 FROM ${BASE_IMAGE}
 
 # Metadata
@@ -75,6 +78,12 @@ ENV DEBIAN_FRONTEND=noninteractive \
 #     && dpkg-reconfigure -f ${DEBIAN_FRONTEND} tzdata \
 #     && apt clean \
 #     && rm -rf /var/lib/apt/lists/*
+# Bootstrap tools/locale that the plain JetPack image does not ship.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        curl ca-certificates gnupg2 lsb-release locales tzdata \
+    && locale-gen en_US.UTF-8 \
+    && update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8 \
+    && rm -rf /var/lib/apt/lists/*
 RUN curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key  -o /usr/share/keyrings/ros-archive-keyring.gpg && \
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | tee /etc/apt/sources.list.d/ros2.list > /dev/null && \
     apt-get update
@@ -219,14 +228,7 @@ RUN groupadd --gid $USER_GID $USERNAME \
 RUN echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> /home/$USERNAME/.bashrc \
     && echo "source /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash" >> /home/$USERNAME/.bashrc
 
-# For building GPU supported containers?
-# Install NVIDIA Container Toolkit
-RUN distribution=$(. /etc/os-release;echo $ID$VERSION_ID) \
-    && curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | apt-key add - \
-    && curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | tee /etc/apt/sources.list.d/nvidia-docker.list \
-    && apt update && apt install -y nvidia-container-toolkit \
-    && apt clean \
-    && rm -rf /var/lib/apt/lists/*
+# NVIDIA Container Toolkit belongs on the HOST, not inside the image (removed).
 
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
@@ -284,7 +286,7 @@ RUN echo "if [ -f ${WORKSPACE}/install/setup.bash ]; then source ${WORKSPACE}/in
 WORKDIR ${WORKSPACE}
 
 # Setup rosdep
-RUN rm /etc/ros/rosdep/sources.list.d/20-default.list 
+RUN rm -f /etc/ros/rosdep/sources.list.d/20-default.list
 RUN rm -rf /root/.ros/rosdep/sources.cache
 RUN rosdep init
 

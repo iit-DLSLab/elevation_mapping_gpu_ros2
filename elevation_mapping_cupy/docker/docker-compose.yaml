@@ -18,11 +18,7 @@ services:
     volumes: 
       - /tmp/.X11-unix:/tmp/.X11-unix
       - ~/.Xauthority:/root/.Xauthority
-      - /dev/bus/usb:/dev/bus/usb
       - ../elevation_mapping_cupy/config:/home/ros/workspace/src/elevation_mapping_cupy/elevation_mapping_cupy/config:ro
-    device_cgroup_rules:
-      - 'c 189:* rmw'
-      - 'c 81:* rmw'
     network_mode: "host"
     privileged: true
     tty: true
@@ -30,7 +26,7 @@ services:
             bash -lc "
             source /home/ros/workspace/.map_env/bin/activate &&
             source /home/ros/workspace/install/setup.bash &&
-            ros2 launch elevation_mapping_cupy elevation_mapping.launch.py
+            ros2 launch elevation_mapping_cupy elevation_mapping.launch.py pointcloud_topic:=${POINTCLOUD_TOPIC:-}
             "
   
   rviz: 
@@ -43,7 +39,6 @@ services:
     volumes: 
       - /tmp/.X11-unix:/tmp/.X11-unix
       - ~/.Xauthority:/root/.Xauthority
-      - /dev/bus/usb:/dev/bus/usb
     network_mode: "host"
     privileged: true
     tty: true

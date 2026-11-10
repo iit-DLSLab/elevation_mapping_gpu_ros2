@@ -14,19 +14,28 @@ sudo docker build -f elevation_mapping_cupy/docker/Dockerfile.Orin -t elevation_
 ```
 # Run Elevation Mapping Package
 
-## 1. Configure the Subscribers
-In order to configure the input sensors for the package to work, you need to edit 3 files.
-1. ```elevation_mapping_cupy/elevation_mapping_cupy/config/core/example_setup.yaml```
-Here you specify the subscriber topic name and the data type (LIDAR and cameras)
+## 1. Configure the Input
+The elevation mapping does **not** drive any camera: it assumes the sensor data is already being published on the ROS 2 network (by a camera/LiDAR driver running elsewhere, or by a rosbag). It only needs:
+- a `sensor_msgs/PointCloud2` topic
+- TF from the point cloud frame to `base_frame`, and from `base_frame` to `map_frame`
 
-2.  ```elevation_mapping_cupy/elevation_mapping_cupy/config/setups/menzi/base.yaml```
-Here also you have to specify the subscriber topic name and data type, similar as in 1.
+Two files matter:
+1. ```elevation_mapping_cupy/elevation_mapping_cupy/config/setups/menzi/base.yaml``` (the `robot_config` loaded by `elevation_mapping.launch.py`)
+Default input topic (`subscribers.pointcloud_sensor_name.topic_name`) and the published layers.
 
-3. ```elevation_mapping_cupy/elevation_mapping_cupy/config/core/core_param.yaml```
-Here you need to specify the: 
+2. ```elevation_mapping_cupy/elevation_mapping_cupy/config/core/core_param.yaml```
+Here you need to specify the:
 - map_frame
-- robot_frame
+- base_frame
 - initialize_frame_id
+
+You can also override the input topic at launch time, without editing any file:
+```
+ros2 launch elevation_mapping_cupy elevation_mapping.launch.py pointcloud_topic:=/my/points
+# or, with docker compose:
+POINTCLOUD_TOPIC=/my/points sudo -E docker compose -f elevation_mapping_cupy/docker/docker-compose.yaml up elevation_mapping -d
+```
+Make sure `ROS_DOMAIN_ID` / `RMW_IMPLEMENTATION` in ```elevation_mapping_cupy/docker/.ros-env``` match the publisher's.
 
 To run the elevation mapping pipeline that are 2 ways, either with docker compose or with bash files.
 

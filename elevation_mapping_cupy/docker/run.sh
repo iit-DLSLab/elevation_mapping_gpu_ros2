@@ -25,10 +25,7 @@ RUN_COMMAND=(
   --env "QT_X11_NO_MITSHM=1"
   --volume /tmp/.X11-unix:/tmp/.X11-unix
   --volume "${HOME}/.Xauthority:/root/.Xauthority"
-  --volume /dev/bus/usb:/dev/bus/usb
   --volume "${CONFIG_DIR}:${CONTAINER_CONFIG_DIR}:ro"
-  --device-cgroup-rule 'c 189:* rmw'
-  --device-cgroup-rule 'c 81:* rmw'
   "${IMAGE_NAME}"
   # /bin/bash
   # -c

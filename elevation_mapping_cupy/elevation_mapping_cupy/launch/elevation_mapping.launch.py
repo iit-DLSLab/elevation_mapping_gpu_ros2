@@ -2,7 +2,7 @@ import os
 from launch import LaunchDescription
 from launch_ros.actions import Node
 from ament_index_python.packages import get_package_share_directory
-from launch.actions import DeclareLaunchArgument
+from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch.conditions import IfCondition
 
@@ -35,6 +35,13 @@ def generate_launch_description():
         description='Path to the RViz config file'
     )
 
+    pointcloud_topic_arg = DeclareLaunchArgument(
+        'pointcloud_topic',
+        default_value='',
+        description='Input PointCloud2 topic (already published by your sensor driver / rosbag). '
+                    'Empty = use subscribers.pointcloud_sensor_name.topic_name from robot_config.'
+    )
+
     use_sim_time_arg = DeclareLaunchArgument(
         'use_sim_time',
         default_value='false',
@@ -53,17 +60,18 @@ def generate_launch_description():
         raise FileNotFoundError(f"Config file {core_param_path} does not exist")
 
     # Define nodes
-    elevation_mapping_node = Node(
-        package=package_name,
-        executable='elevation_mapping_node',
-        name='elevation_mapping_node',
-        output='screen',
-        parameters=[
-            core_param_path,
-            robot_param_path,
-            {'use_sim_time': use_sim_time}
-        ]
-    )
+    def make_elevation_mapping_node(context):
+        params = [core_param_path, robot_param_path, {'use_sim_time': use_sim_time}]
+        topic = LaunchConfiguration('pointcloud_topic').perform(context)
+        if topic:
+            params.append({'subscribers.pointcloud_sensor_name.topic_name': topic})
+        return [Node(
+            package=package_name,
+            executable='elevation_mapping_node',
+            name='elevation_mapping_node',
+            output='screen',
+            parameters=params,
+        )]
 
     rviz_node = Node(
         package='rviz2',
@@ -79,7 +87,8 @@ def generate_launch_description():
         robot_param_arg,
         launch_rviz_arg,
         rviz_config_arg,
+        pointcloud_topic_arg,
         use_sim_time_arg,
-        elevation_mapping_node,
+        OpaqueFunction(function=make_elevation_mapping_node),
         rviz_node
     ])
