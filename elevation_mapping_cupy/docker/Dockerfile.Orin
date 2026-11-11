@@ -228,9 +228,13 @@ RUN /home/${USERNAME}/workspace/.map_env/bin/pip install --no-cache-dir --retrie
     transforms3d \
     numpy==1.26.4 \
     ruamel.yaml \
-    chainer \
     empy==3.3.4 \
     lark
+
+# chainer ships only an sdist whose setup.py imports pkg_resources (removed in recent setuptools).
+# Build it against the venv's pinned setuptools<80 instead of pip's isolated (latest) build env.
+RUN /home/${USERNAME}/workspace/.map_env/bin/pip install --no-cache-dir --retries 2 --timeout 120 \
+    --no-build-isolation chainer
 
 # 1. Install Jetson ML wheels along with cuDSS
 RUN if [ "${INSTALL_JETSON_ML}" = "true" ]; then \
