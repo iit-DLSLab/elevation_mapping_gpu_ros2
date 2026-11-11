@@ -37,8 +37,8 @@ ARG CUDNN_PACKAGES="libcudnn9-cuda-12 libcudnn9-dev-cuda-12"
 # Change this to the desired RMW implementation
 # ARG RMW_NAME=zenoh
 # ARG RMW_NAME=fastdds
-ARG RMW_NAME=cyclonedds
-#ARG RMW_NAME=fastrtps
+# ARG RMW_NAME=cyclonedds
+ARG RMW_NAME=fastrtps
 
 
 # BUILD TYPE Debug, Release, RelWithDebInfo, MinSizeRel
