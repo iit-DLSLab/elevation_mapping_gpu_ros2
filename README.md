@@ -42,9 +42,9 @@ GPU-accelerated elevation mapping for robotic navigation and locomotion. This pa
 
 ## Requirements
 
-- **CUDA**: 12.1+
+- **CUDA**: 12.8+ (the Docker image ships CUDA 12.8.1; the host only needs an NVIDIA driver that supports it, R570 or newer)
 - **Python**: 3.10
-- **GPU**: NVIDIA GPU with CUDA support
+- **GPU**: NVIDIA GPU with CUDA support. RTX 50xx (Blackwell, sm_120) GPUs need CUDA 12.8+: with older CUDA the node fails with `CUDA_ERROR_NO_BINARY_FOR_GPU`
 - **Docker**: 20.10+ with NVIDIA Container Toolkit
 
 ## Setup
@@ -87,6 +87,23 @@ After running the container, you will be inside the Docker environment. A welcom
 ros@dls-Dell-G15-5520:~/ros_ws$
 ```
 Now, you can proceed to launch the elevation map node.
+
+#### ROS 2 middleware (RMW)
+
+The image installs both CycloneDDS (`rmw_cyclonedds_cpp`) and Fast DDS (`rmw_fastrtps_cpp`).
+
+- **Choosing the middleware (`RMW_NAME`).** `RMW_NAME` (`cyclonedds`, the default, or `fastrtps`) sets `RMW_IMPLEMENTATION=rmw_<RMW_NAME>_cpp`. Given to `build.sh`, it becomes the image default; given to `run.sh`, it overrides the image default for that container only. It does not choose which middleware is installed: both always are.
+  ```bash
+  RMW_NAME=fastrtps ./docker/build.sh   # image default: Fast DDS
+  ./docker/run.sh                       # uses the image default
+  RMW_NAME=cyclonedds ./docker/run.sh   # this container only: CycloneDDS
+  ```
+- `run.sh` also sets `ROS_DOMAIN_ID=1`; edit its `--env` line to change it.
+- **Connecting to DLS2.** DLS2 uses Fast DDS discovery servers. Inside the container, source the DLS2 setup script, which is mounted with the config folder:
+  ```bash
+  source ~/ros_ws/install/share/elevation_mapping_cupy/config/setup_ros2_for_dls2.bash
+  ```
+  It switches the current shell to Fast DDS, sets `ROS_DISCOVERY_SERVER` and `ROS_SUPER_CLIENT`, and restarts the ROS 2 daemon. The servers are read from `DLS_SERVERS_PATH` (default `/opt/dls2/include/dls2/util/messaging/servers.yaml`). When that file does not exist, as in this container, it falls back to local servers on `127.0.0.1`, ports 11812, 11813, 11814 and 11818, which is correct for a simulation on the same machine. For the real robot, mount the robot's `servers.yaml` into the container and set `DLS_SERVERS_PATH` to it.
 
 
 ### 4. Launch the Elevation Map Node
