@@ -3,7 +3,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # Stage 1 – base: CUDA + ROS2 + locale/timezone
 # ─────────────────────────────────────────────────────────────────────────────
-FROM nvidia/cuda:12.1.1-cudnn8-devel-ubuntu22.04 AS base
+FROM nvidia/cuda:12.8.1-cudnn-devel-ubuntu22.04 AS base
 
 LABEL description="ROS2 Humble + CUDA – elevation_mapping_cupy baked in"
 LABEL version="2.0"
@@ -74,12 +74,16 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         libcgal-dev \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# ── PyTorch (CUDA 12.1 wheel) ────────────────────────────────────────────────
-RUN python3 -m pip install -U --extra-index-url https://download.pytorch.org/whl/cu121 \
+# ── PyTorch (CUDA 12.8 wheel; required for Blackwell / sm_120) ────────────────────────────────────────────────
+RUN python3 -m pip install -U --extra-index-url https://download.pytorch.org/whl/cu128 \
     torch torchvision torchaudio
 
 # ── General Python packages ──────────────────────────────────────────────────
-RUN python3 -m pip install \
+# The torch step above upgrades setuptools; the apt-provided `packaging` (21.3)
+# is too old for it (canonicalize_version(strip_trailing_zero=...)), which
+# breaks sdist builds such as flake8-blind-except. Upgrade packaging first.
+RUN python3 -m pip install -U "packaging>=24.2" && \
+    python3 -m pip install \
     colcon-clean rosdoc2 \
     sphinx_rtd_theme sphinx-multiversion sphinx-copybutton sphinx-tabs \
     autopep8 \
