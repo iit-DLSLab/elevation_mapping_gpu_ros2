@@ -5,6 +5,16 @@ set -euo pipefail
 
 IMAGE_NAME="${IMAGE_NAME:-elevation_mapping:latest}"
 
+# ROS 2 middleware: the image default (set by RMW_NAME at build time) unless
+# RMW_NAME=cyclonedds|fastrtps is given here.
+RMW_ENV=()
+if [ -n "${RMW_NAME:-}" ]; then
+    case "$RMW_NAME" in
+        cyclonedds|fastrtps) RMW_ENV=(--env "RMW_IMPLEMENTATION=rmw_${RMW_NAME}_cpp") ;;
+        *) echo "ERROR: RMW_NAME must be 'cyclonedds' or 'fastrtps', got '$RMW_NAME'" >&2; exit 1 ;;
+    esac
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
@@ -37,6 +47,7 @@ fi
 echo "======================================================="
 echo " Elevation Mapping Container"
 echo " Image        : $IMAGE_NAME"
+echo " RMW          : $([ -n "${RMW_NAME:-}" ] && echo "rmw_${RMW_NAME}_cpp" || echo "image default")"
 echo " Config mounts:"
 echo "   $HOST_EM_CONFIG"
 echo "     → $CONTAINER_EM_CONFIG"
@@ -54,7 +65,7 @@ docker run --rm -it \
     --env DISPLAY="$DISPLAY" \
     --env XAUTHORITY="$XAUTH" \
     --env QT_X11_NO_MITSHM=1 \
-    --env RMW_IMPLEMENTATION=rmw_cyclonedds_cpp \
+    ${RMW_ENV[@]+"${RMW_ENV[@]}"} \
     --env ROS_DOMAIN_ID=1 \
     --env ROS_LOCALHOST_ONLY=0 \
     \

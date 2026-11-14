@@ -12,6 +12,11 @@ ARG ROS_DISTRO=humble
 ARG USERNAME=ros
 ARG USER_UID=1000
 ARG USER_GID=${USER_UID}
+# Default ROS 2 middleware of the image: RMW_IMPLEMENTATION=rmw_<RMW_NAME>_cpp.
+# Accepted: cyclonedds | fastrtps (both are installed below, so either works).
+# Set it with `RMW_NAME=fastrtps ./docker/build.sh`. It only sets the default:
+# `RMW_NAME=... ./docker/run.sh` overrides it per container, and sourcing
+# setup_ros2_for_dls2.bash switches the shell to fastrtps.
 ARG RMW_NAME=cyclonedds
 ARG INSTALL_EMCUPY_ROSDEPS=true
 
@@ -41,7 +46,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     && dpkg-reconfigure -f noninteractive tzdata \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# ── ROS 2 Humble + CycloneDDS RMW ───────────────────────────────────────────
+# ── ROS 2 Humble + CycloneDDS / Fast DDS RMWs ───────────────────────────────
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
         -o /usr/share/keyrings/ros-archive-keyring.gpg \
@@ -53,6 +58,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         python3-argcomplete \
         # CycloneDDS – required by run.sh (RMW_IMPLEMENTATION=rmw_cyclonedds_cpp)
         ros-${ROS_DISTRO}-rmw-cyclonedds-cpp \
+        # Fast DDS – required by setup_ros2_for_dls2.bash (DLS2 discovery servers)
+        ros-${ROS_DISTRO}-rmw-fastrtps-cpp \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 
