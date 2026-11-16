@@ -648,10 +648,11 @@ void ElevationMappingNode::imageCallback(const sensor_msgs::msg::Image::SharedPt
 
 void ElevationMappingNode::updatePose() {
   geometry_msgs::msg::TransformStamped transformStamped;
-  const auto& timeStamp = this->now();
   Eigen::Affine3d transformationBaseToMap;
   try {
-    transformStamped = tfBuffer_->lookupTransform(mapFrameId_, baseFrameId_, timeStamp, tf2::durationFromSec(1.0));
+    // Latest available TF, non-blocking (same as pointcloudCallback). Looking up at now() with a 1 s timeout
+    // blocked the single-threaded executor whenever /tf lagged /clock (bag replay, network).
+    transformStamped = tfBuffer_->lookupTransform(mapFrameId_, baseFrameId_, tf2::TimePointZero);
     transformationBaseToMap = tf2::transformToEigen(transformStamped);
   } catch (tf2::TransformException& ex) {
     RCLCPP_ERROR(this->get_logger(), "%s", ex.what());
@@ -705,8 +706,7 @@ bool ElevationMappingNode::getSubmap(
     geometry_msgs::msg::TransformStamped transformStamped;
     
     try {
-      const auto& timeStamp = this->now();
-      transformStamped = tfBuffer_->lookupTransform(requestedFrameId, mapFrameId_, timeStamp, tf2::durationFromSec(1.0));      
+      transformStamped = tfBuffer_->lookupTransform(requestedFrameId, mapFrameId_, tf2::TimePointZero);      
     
     
     pose.position.x = transformStamped.transform.translation.x;
@@ -779,7 +779,6 @@ void ElevationMappingNode::clearMapWithInitializer(const std::shared_ptr<std_srv
 
 void ElevationMappingNode::initializeWithTF() {
   std::vector<Eigen::Vector3d> points;
-  const auto& timeStamp = this->now();
   int i = 0;
   Eigen::Vector3d p;
   for (const auto& frame_id : initialize_frame_id_) {
@@ -787,7 +786,7 @@ void ElevationMappingNode::initializeWithTF() {
     Eigen::Affine3d transformationBaseToMap;
     geometry_msgs::msg::TransformStamped transformStamped;
     try {
-      transformStamped = tfBuffer_->lookupTransform(mapFrameId_, frame_id, timeStamp, tf2::durationFromSec(1.0));
+      transformStamped = tfBuffer_->lookupTransform(mapFrameId_, frame_id, tf2::TimePointZero);
       transformationBaseToMap = tf2::transformToEigen(transformStamped);
     } catch (tf2::TransformException& ex) {
       RCLCPP_ERROR(this->get_logger(), "%s", ex.what());
