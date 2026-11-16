@@ -4,9 +4,9 @@
     # ── Sensor Input (uncomment ONE section based on your sensor) ─────────────
     
       # Option 1 – Intel RealSense D435i (depth camera)
-      # realsense_camera:
-      #   topic_name: '/realsense/front/camera/depth/color/points'
-      #   data_type: pointcloud
+      realsense_camera:
+        topic_name: '/front_camera/camera/depth/color/points'
+        data_type: pointcloud
 
       # Option 2 – Unitree L1 LiDAR
       # l1_lidar:
