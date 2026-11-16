@@ -19,6 +19,7 @@ services:
       - /tmp/.X11-unix:/tmp/.X11-unix
       - ~/.Xauthority:/root/.Xauthority
       - ../elevation_mapping_cupy/config:/home/ros/workspace/src/elevation_mapping_cupy/elevation_mapping_cupy/config:ro
+      - ../elevation_mapping_cupy:/home/ros/workspace/src/elevation_mapping_cupy/elevation_mapping_cupy
     network_mode: "host"
     privileged: true
     tty: true
