@@ -38,9 +38,9 @@ elevation_mapping_node:
     recordable_fps: 30.0                           # Recordable fps for pointcloud.
     enable_normal_arrow_publishing: false
 
-    max_ray_length: 10.0                            # maximum length for ray tracing.
-    cleanup_step: 0.1                               # subtitute this value from validity layer at visibiltiy cleanup.
-    cleanup_cos_thresh: 0.1                         # subtitute this value from validity layer at visibiltiy cleanup.
+    max_ray_length: 4.0                            # maximum length for ray tracing.
+    cleanup_step: 0.01                               # subtitute this value from validity layer at visibiltiy cleanup.
+    cleanup_cos_thresh: 0.4                         # subtitute this value from validity layer at visibiltiy cleanup.
 
     safe_thresh: 0.7                                # if traversability is smaller, it is counted as unsafe cell.
     safe_min_thresh: 0.4                            # polygon is unsafe if there exists lower traversability than this.
