@@ -21,13 +21,19 @@ services:
       - ../elevation_mapping_cupy/config:/home/ros/workspace/src/elevation_mapping_cupy/elevation_mapping_cupy/config:ro
       - ../elevation_mapping_cupy:/home/ros/workspace/src/elevation_mapping_cupy/elevation_mapping_cupy
     network_mode: "host"
+    ipc: host                 # share /dev/shm with the host: Fast DDS shared-memory transport between containers on the same machine
     privileged: true
     tty: true
     command: >
             bash -lc "
             source /home/ros/workspace/.map_env/bin/activate &&
             source /home/ros/workspace/install/setup.bash &&
-            ros2 launch elevation_mapping_cupy elevation_mapping.launch.py pointcloud_topic:=${POINTCLOUD_TOPIC:-}
+            export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+            export ROS_DISCOVERY_SERVER="192.168.88.250:11812;192.168.88.250:11813;192.168.88.250:11814;192.168.88.250:11818"
+            export ROS_SUPER_CLIENT=TRUE
+            ros2 daemon stop
+            ros2 daemon start
+            ros2 launch elevation_mapping_cupy elevation_mapping.launch.py pointcloud_topic:="/front_down/depth/points"
             "
   
   rviz: 
@@ -41,6 +47,7 @@ services:
       - /tmp/.X11-unix:/tmp/.X11-unix
       - ~/.Xauthority:/root/.Xauthority
     network_mode: "host"
+    ipc: host
     privileged: true
     tty: true
     command: ros2 run rviz2 rviz2
