@@ -1,4 +1,7 @@
 import os
+import re
+import tempfile
+import yaml
 from launch import LaunchDescription
 from launch_ros.actions import Node
 from ament_index_python.packages import get_package_share_directory
@@ -38,8 +41,8 @@ def generate_launch_description():
     pointcloud_topic_arg = DeclareLaunchArgument(
         'pointcloud_topic',
         default_value='',
-        description='Input PointCloud2 topic (already published by your sensor driver / rosbag). '
-                    'Empty = use subscribers.pointcloud_sensor_name.topic_name from robot_config.'
+        description='Input PointCloud2 topic(s), comma-separated (e.g. /front_down/depth/points,/front_up/depth/points). '
+                    'If set, it REPLACES all subscribers of robot_config. Empty = use the subscribers of robot_config.'
     )
 
     use_sim_time_arg = DeclareLaunchArgument(
@@ -61,10 +64,30 @@ def generate_launch_description():
 
     # Define nodes
     def make_elevation_mapping_node(context):
-        params = [core_param_path, robot_param_path, {'use_sim_time': use_sim_time}]
-        topic = LaunchConfiguration('pointcloud_topic').perform(context)
-        if topic:
-            params.append({'subscribers.pointcloud_sensor_name.topic_name': topic})
+        robot_path = robot_param_path.perform(context)
+        topics = [t.strip() for t in LaunchConfiguration('pointcloud_topic').perform(context).split(',') if t.strip()]
+        extra = {}
+        if topics:
+            # Parameters loaded from a YAML cannot be removed afterwards: write a copy of robot_config
+            # without its subscribers, then declare one subscriber per topic.
+            with open(robot_path) as f:
+                robot_cfg = yaml.safe_load(f)
+            for node_cfg in robot_cfg.values():
+                node_cfg.get('ros__parameters', {}).pop('subscribers', None)
+            tmp = tempfile.NamedTemporaryFile('w', prefix='elevation_robot_', suffix='.yaml', delete=False)
+            yaml.safe_dump(robot_cfg, tmp)
+            tmp.close()
+            robot_path = tmp.name
+            for i, t in enumerate(topics):
+                # Sensor name from the first topic segment (/front_down/depth/points -> front_down)
+                name = re.sub(r'\W', '_', t.strip('/').split('/')[0]) or f'sensor_{i}'
+                if f'subscribers.{name}.topic_name' in extra:
+                    name = f'{name}_{i}'
+                extra[f'subscribers.{name}.topic_name'] = t
+                extra[f'subscribers.{name}.data_type'] = 'pointcloud'
+        params = [core_param_path, robot_path, {'use_sim_time': use_sim_time}]
+        if extra:
+            params.append(extra)
         return [Node(
             package=package_name,
             executable='elevation_mapping_node',
